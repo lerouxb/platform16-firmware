@@ -43,6 +43,8 @@ struct StepInstrument {
     pitchEnvelope.init(sampleRate);
     cutoffEnvelope.init(sampleRate);
     noiseEnvelope.init(sampleRate);
+
+    randomizeSequence();
   }
 
   void update() {
@@ -143,6 +145,14 @@ struct StepInstrument {
     return value;
   }
 
+  void randomizeSequence() {
+    // randomize the whole sequence
+    for (int i = 0; i < 16; i++) {
+      state.steps[i] = randomProb();
+      state.amounts[i] = randomProb();
+    }
+  }
+
   float process() {
     // TODO: 0, 2, 4, 8, 10, 16, 32?
     uint stepCount = state.stepCount.getScaled();
@@ -162,11 +172,7 @@ struct StepInstrument {
 
       // trigger notes, advance sequencer, etc
       if (stepCount == 0) {
-        // randomize the whole sequence
-        for (int i = 0; i < 16; i++) {
-          state.steps[i] = randomProb();
-          state.amounts[i] = randomProb();
-        }
+        randomizeSequence();
       }
 
       if (isPlayedStep()) {

@@ -58,12 +58,10 @@ struct Pots {
   void process() {
     sleep_ms(1);
 
-    // read twice
+    // read twice then average
     uint16_t resultInt = adc_read() + adc_read();
-    // TODO: low pass filter the result
+    // 8191 = 2 * 4096 (12 bits) - 1
     float result = 1 - (static_cast<float>(resultInt) / 8191.f);
-    //printf("pot %d: %d\n", nextPot, resultInt);
-    // TODO: have a smarter way to determine if the change is significant
     if (fabs(result - targetValues[nextPot]) > tinyAmount) {
       // only change if it is a significant difference
       targetValues[nextPot] =  result;
@@ -79,8 +77,8 @@ struct Pots {
     setPins();
 
     for (uint i = 0; i<16; i++) {
-      // TODO: have a smarter way to snap it to the target and prevent drift
       if (fabs(currentValues[i] - targetValues[i]) < tinyAmount) {
+        // snap to the target to try and prevent drift
         currentValues[i] = targetValues[i];
       } else {
         currentValues[i] += currentIncrements[i];

@@ -7,37 +7,6 @@
 
 namespace platform {
 
-/** Ported from pichenettes/eurorack/plaits/dsp/oscillator/oscillator.h
- */
-// TODO: move somewhere common
-inline float thisBlepSample(float t) {
-  return 0.5f * t * t;
-}
-
-/** Ported from pichenettes/eurorack/plaits/dsp/oscillator/oscillator.h
- */
-// TODO: move somewhere common
-inline float nextBlepSample(float t) {
-  t = 1.0f - t;
-  return -0.5f * t * t;
-}
-
-/** Ported from pichenettes/eurorack/plaits/dsp/oscillator/oscillator.h
- */
-// TODO: move somewhere common
-inline float nextIntegratedBlepSample(float t) {
-  const float t1 = 0.5f * t;
-  const float t2 = t1 * t1;
-  const float t4 = t2 * t2;
-  return 0.1875f - t1 + 1.5f * t2 - t4;
-}
-
-/** Ported from pichenettes/eurorack/plaits/dsp/oscillator/oscillator.h
- */
-inline float thisIntegratedBlepSample(float t) {
-  return nextIntegratedBlepSample(1.0f - t);
-}
-
 /**
 Saw with variable slope or notch.
 Ported from DaisySP's port by Ben Sergentanis
