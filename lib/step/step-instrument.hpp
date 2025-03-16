@@ -4,8 +4,8 @@
 #include "../decay.hpp"
 #include "../ladder.hpp"
 #include "../metro.hpp"
+#include "../oscillator.hpp"
 #include "../pots.hpp"
-#include "../variablesawosc.hpp"
 #include "../utils.hpp"
 #include "step-controller.hpp"
 #include "step-state.hpp"
@@ -16,6 +16,9 @@
 #define DESTINATION_PITCH 1
 #define DESTINATION_CUTOFF 2
 
+#define SHAPE_TRIANGLE 0
+#define SHAPE_SAW 1
+#define SHAPE_SQUARE 2
 
 namespace platform {
 
@@ -31,18 +34,20 @@ float maybeDecay(float decay, float value) {
 
 
 struct StepInstrument {
-  StepInstrument(Pots& pots) : controller{pots}, changed{true}, cachedFrequency{0}, cachedCutoff{0} {};
+  StepInstrument(Pots& pots)
+    : controller{pots}, changed{true}, cachedFrequency{0}, cachedCutoff{0} {};
 
   void init(float sampleRate) {
-    filter.init(sampleRate);
-    // filter.SetDrive(0.8);
     oscillator.init(sampleRate);
-    oscillator.setPW(0.f);
+    oscillator.setWaveform(getShape());
     clock.init(getTickFrequency(), sampleRate);
 
     pitchEnvelope.init(sampleRate);
     cutoffEnvelope.init(sampleRate);
     noiseEnvelope.init(sampleRate);
+
+    filter.init(sampleRate);
+    // filter.SetDrive(0.8);
 
     randomizeSequence();
   }
@@ -95,7 +100,19 @@ struct StepInstrument {
   }
 
   uint getDestination() {
-    return (int)roundf(state.modDestination.getScaled());
+    //return (int)roundf(state.modDestination.getScaled());
+    return state.modDestination.getScaled();
+  }
+
+  uint getShape() {
+    auto shape = state.shape.getScaled();
+    if (shape == SHAPE_TRIANGLE) {
+      return Oscillator::WAVE_POLYBLEP_TRI;
+    }
+    if (shape == SHAPE_SAW) {
+      return Oscillator::WAVE_POLYBLEP_SAW;
+    }
+    return Oscillator::WAVE_POLYBLEP_SQUARE;
   }
 
   float getNoiseAmount() {
@@ -186,17 +203,16 @@ struct StepInstrument {
       if (state.step >= stepCount) {
         state.step = 0;
       }
-
     }
 
-    // TODO: set the oscillator shape
+    oscillator.setWaveform(getShape());
     clock.setFreq(getTickFrequency());
     filter.setRes(state.filterResonance.getScaled() * 1.8f);
 
     pitchEnvelope.setDecayTime(safeDecayTime(pitchDecay));
     cutoffEnvelope.setDecayTime(safeDecayTime(cutoffDecay));
     noiseEnvelope.setDecayTime(safeDecayTime(noiseDecay));
-    
+
     float frequency = getOscillatorFrequency() * maybeDecay(pitchDecay, pitchEnvelope.process());
     oscillator.setFreq(frequency);
     float cutoff = getFilterCutoff() * maybeDecay(cutoffDecay, cutoffEnvelope.process());
@@ -215,7 +231,7 @@ struct StepInstrument {
     sample = softClip(sample * state.drive.getPreGain()) * state.drive.getPostGain();
 
     // volume
-    //sample = sample * state.volume.getScaled();
+    // sample = sample * state.volume.getScaled();
     sample = sample * powf(state.volume.getScaled(), 2.f);
 
     // cache what we can until the next clock tick
@@ -224,7 +240,7 @@ struct StepInstrument {
     return softClip(sample);
   }
 
-  StepState *getState() {
+  StepState* getState() {
     return &state;
   }
 
@@ -237,7 +253,7 @@ struct StepInstrument {
   Metro clock;
   LadderFilter filter;
   // TODO: just use normal saw, ramp and triangle oscillators then interpolate between them
-  VariableSawOscillator oscillator;
+  Oscillator oscillator;
   DecayEnvelope pitchEnvelope;
   DecayEnvelope cutoffEnvelope;
   DecayEnvelope noiseEnvelope;

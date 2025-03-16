@@ -73,6 +73,14 @@ inline float thisIntegratedBlepSample(float t) {
   return nextIntegratedBlepSample(1.0f - t);
 }
 
+/** Significantly more efficient than fmodf(x, 1.0f) for calculating
+ *  the decimal part of a floating point value.
+ */
+inline float fastmod1f(float x)
+{
+    return x - static_cast<int>(x);
+}
+
 } // namespace platform
 
 #endif

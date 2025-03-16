@@ -100,18 +100,20 @@ int main() {
   instrument.init(SAMPLE_RATE);
 
   struct audio_buffer_pool* ap = init_audio();
-  auto tickStart = time_us_64();
-  uint64_t total = 0;
+  //auto tickStart = time_us_64();
+  //uint64_t total = 0;
 
   while (true) {
     pots.process();
     instrument.update();
 
-    auto start = time_us_64();
+    //auto start = time_us_64();
     struct audio_buffer* buffer = take_audio_buffer(ap, true);
+    /*
     auto end = time_us_64();
     auto timeTaken = end - start;
     total += timeTaken;
+    */
 
     int16_t* samples = (int16_t*)buffer->buffer->bytes;
     for (uint i = 0; i < buffer->max_sample_count; i++) {
@@ -122,12 +124,12 @@ int main() {
     }
     buffer->sample_count = buffer->max_sample_count;
 
-    start = time_us_64();
+    //start = time_us_64();
     give_audio_buffer(ap, buffer);
+    /*
     end = time_us_64();
     timeTaken = end - start;
     total += timeTaken;
-
     
     if (end - tickStart > 1000000) {
       // this is how long we busy-waited for the audio buffers to drain in the last second because they were all full
@@ -137,6 +139,7 @@ int main() {
       total = 0;
       tickStart = end; 
     }
+      */
   }
 
   puts("\n");

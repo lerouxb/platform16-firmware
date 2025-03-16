@@ -9,6 +9,7 @@ namespace platform {
 
 // TODO: FloatRangeParameter parameter
 using BPMParameter = IntegerRangeParameter<30, 240>;
+using ShapeParameter = IntegerRangeParameter<0, 2>;
 using StepsParameter = IntegerRangeParameter<0, 32>;
 using DestinationParameter = IntegerRangeParameter<0, 2>;
 
@@ -22,7 +23,7 @@ struct StepState {
   RawParameter skips;
   RawParameter mods;
 
-  RawParameter shape;
+  ShapeParameter shape;
   RawParameter filterResonance;
   OverdriveParameter drive;
   RawParameter volume;
