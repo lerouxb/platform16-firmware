@@ -49,6 +49,18 @@ struct Pots {
   }
 
   void setPins() {
+    /*
+    gpio_put(s0Pin, 1);
+    gpio_put(s1Pin, 1);
+    gpio_put(s2Pin, 1);
+    gpio_put(s3Pin, 1);
+
+    gpio_put(s0Pin, 0);
+    gpio_put(s1Pin, 0);
+    gpio_put(s2Pin, 0);
+    gpio_put(s3Pin, 0);
+    */
+
     gpio_put(s0Pin, (nextPot & 1) ? 1 : 0);
     gpio_put(s1Pin, (nextPot & 2) ? 1 : 0);
     gpio_put(s2Pin, (nextPot & 4) ? 1 : 0);
@@ -56,7 +68,7 @@ struct Pots {
   }
 
   void process() {
-    sleep_ms(1);
+    //sleep_ms(1);
 
     // read twice then average
     uint16_t resultInt = adc_read() + adc_read();
@@ -87,14 +99,14 @@ struct Pots {
   }
 
   private:
+  float currentValues[16];
+  float targetValues[16];
+  float currentIncrements[16];
   uint s0Pin;
   uint s1Pin;
   uint s2Pin;
   uint s3Pin;
   uint nextPot;
-  float currentValues[16];
-  float targetValues[16];
-  float currentIncrements[16];
 };
 
 }  // namespace platform

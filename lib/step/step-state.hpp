@@ -7,8 +7,8 @@
 
 namespace platform {
 
-// TODO: FloatRangeParameter parameter
-using BPMParameter = IntegerRangeParameter<30, 240>;
+using BPMParameter = ExponentialParameter<1.f, 240.f, 1.5f>;
+//using BPMParameter = IntegerRangeParameter<30, 240>;
 using ShapeParameter = IntegerRangeParameter<0, 2>;
 using StepsParameter = IntegerRangeParameter<0, 32>;
 using DestinationParameter = IntegerRangeParameter<0, 2>;

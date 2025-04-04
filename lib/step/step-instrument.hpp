@@ -37,7 +37,8 @@ struct StepInstrument {
   StepInstrument(Pots& pots)
     : controller{pots}, changed{true}, cachedFrequency{0}, cachedCutoff{0} {};
 
-  void init(float sampleRate) {
+  void init(float sampleRateIn) {
+    sampleRate = sampleRateIn;
     oscillator.init(sampleRate);
     oscillator.setWaveform(getShape());
     clock.init(getTickFrequency(), sampleRate);
@@ -184,6 +185,7 @@ struct StepInstrument {
     float noiseDecay = state.noiseDecay.getScaled();
 
     if (clock.process()) {
+      //printf("%.2f\n", sampleRate);
       // recalculate frequency and cutoff
       changed = true;
 
@@ -245,6 +247,7 @@ struct StepInstrument {
   }
 
   private:
+  float sampleRate;
   bool changed;
   float cachedFrequency;
   float cachedCutoff;

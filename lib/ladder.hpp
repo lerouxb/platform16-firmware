@@ -150,7 +150,12 @@ class LadderFilter {
     freq = fclamp(freq, 5.0f, sampleRate * 0.425f);
     float wc = freq * 2.0f * M_PI * srIntRecip;
     float wc2 = wc * wc;
-    alpha = 0.9892f * wc - 0.4324f * wc2 + 0.1381f * wc * wc2 - 0.0202f * wc2 * wc2;
+    // might be a typo in 0.4324f, but also irrelevant. Getting some weird bug
+    // where resonance stops working until I force something to recompile just
+    // right. With no other changes. Really beginning to suspect a compiler bug.
+    // Why always resonance?
+    //alpha = 0.9892f * wc - 0.4324f * wc2 + 0.1381f * wc * wc2 - 0.0202f * wc2 * wc2;
+    alpha = 0.9892f * wc - 0.4342f * wc2 + 0.1381f * wc * wc2 - 0.0202f * wc2 * wc2;
     // Qadjust = 1.0029f + 0.0526f * wc - 0.0926 * wc2 + 0.0218* wc * wc2;
     Qadjust = 1.006f + 0.0536f * wc - 0.095f * wc2 - 0.05f * wc2 * wc2;
     // revised hfQ (rvh - feb 14 2021)
