@@ -9,6 +9,23 @@ namespace platform {
 const float tinyAmount = 0.0003f;
 //const float tinyAmount = 0.f;
 
+#define K1 9
+#define K2 4
+#define K3 12
+#define K4 5
+#define K5 3
+#define K6 10
+#define K7 6
+#define K8 13
+#define K9 2
+#define K10 11
+#define K11 7
+#define K12 14
+#define K13 0
+#define K14 1
+#define K15 15
+#define K16 8
+
 struct Pots {
   Pots(uint s0PinIn, uint s1PinIn, uint s2PinIn, uint s3PinIn) {
     s0Pin = s0PinIn;
@@ -73,7 +90,8 @@ struct Pots {
     // read twice then average
     uint16_t resultInt = adc_read() + adc_read();
     // 8191 = 2 * 4096 (12 bits) - 1
-    float result = 1 - (static_cast<float>(resultInt) / 8191.f);
+    //float result = 1 - (static_cast<float>(resultInt) / 8191.f);
+    float result = static_cast<float>(resultInt) / 8191.f;
     if (fabs(result - targetValues[nextPot]) > tinyAmount) {
       // only change if it is a significant difference
       targetValues[nextPot] =  result;

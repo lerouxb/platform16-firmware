@@ -11,14 +11,32 @@
 #include "step-state.hpp"
 
 #include <math.h>
+#include <algorithm>
+#include <functional>
+#include <random>
 
+// TODO: the problem here is there are only pots, no switches. So it is hard to
+// tell where you are. Maybe with a pot that has an arrow and nice markings on
+// the enclosure it can work.
 #define SCALE_UNQUANTIZED 0
 #define SCALE_CHROMATIC 1
 #define SCALE_MAJOR 2
+// maybe only keep natural OR harmonic OR melodic
 #define SCALE_NATURAL_MINOR 3
 #define SCALE_HARMONIC_MINOR 4
 #define SCALE_PENTATONIC_MAJOR 5
 #define SCALE_PENTATONIC_MINOR 6
+// maybe the blues scale?
+
+#define ALGORITHM_NONE 0 
+#define ALGORITHM_RAMP_UP 1
+#define ALGORITHM_RAMP_DOWN 2
+#define ALGORITHM_TRANGLE_UP 3
+#define ALGORITHM_TRIANGLE_DOWN 4
+#define ALGORITHM_TWO_TRIANGLES_UP 5
+#define ALGORITHM_TWO_TRIANGLES_DOWN 6
+#define ALGORITHM_RANDOM_SQUARE_LOW 7
+#define ALGORITHM_RANDOM_SQUARE_HIGH 8
 
 namespace platform {
 
@@ -143,7 +161,7 @@ float notes[] = {
 
 struct StepInstrument {
   StepInstrument(Pots& pots)
-    : controller{pots}, changed{true}, cachedVolume{0}, cachedFrequency{0}, cachedCutoff{0}, lastPlayedAmount{0} {};
+    : controller{pots}, changed{true}, cachedVolume{0}, cachedFrequency{0}, cachedCutoff{0}, lastPlayedAmount{0}, previousAlgorithm{0} {};
 
   void init(float sampleRateIn) {
     sampleRate = sampleRateIn;
@@ -304,12 +322,91 @@ struct StepInstrument {
     return value;
   }
 
+  void sortByAlgorithm() {
+    // TODO: we can probably move this
+    std::random_device rd;
+    std::mt19937 g(rd());
+
+    switch (state.algorithm.getScaled()) {
+      case ALGORITHM_NONE:
+        // get back to the original random order
+        // (we could also just shuffle again?)
+        for (int i=0; i < 32; i++) {
+          state.amounts[i] = state.amountsBackup[i];
+        }
+        break;
+
+      case ALGORITHM_RAMP_UP:
+        // 1. ramp up
+        std::sort(std::begin(state.amounts), std::end(state.amounts));
+        break;
+
+      case ALGORITHM_RAMP_DOWN:
+        // 2. ramp down
+        std::sort(std::begin(state.amounts), std::end(state.amounts), std::greater{});
+        break;
+
+      case ALGORITHM_TRANGLE_UP:
+        // 3. triangle up
+        std::partial_sort(std::begin(state.amounts), std::begin(state.amounts) + 16, std::begin(state.amounts) + 16, std::less{});
+        std::partial_sort(std::begin(state.amounts)+16, std::end(state.amounts), std::end(state.amounts), std::greater{});
+        break;
+
+      case ALGORITHM_TRIANGLE_DOWN:
+        // 4. triangle down
+        std::partial_sort(std::begin(state.amounts), std::begin(state.amounts) + 16, std::begin(state.amounts) + 16, std::greater{});
+        std::partial_sort(std::begin(state.amounts)+16, std::end(state.amounts), std::end(state.amounts), std::less{});
+        break;
+
+      case ALGORITHM_TWO_TRIANGLES_UP:
+        // 5. two triangles up
+        std::partial_sort(std::begin(state.amounts), std::begin(state.amounts) + 8, std::begin(state.amounts) + 8, std::less{});
+        std::partial_sort(std::begin(state.amounts)+8, std::begin(state.amounts)+16, std::begin(state.amounts)+16, std::greater{});
+        std::partial_sort(std::begin(state.amounts)+16, std::begin(state.amounts)+24, std::begin(state.amounts)+24, std::less{});
+        std::partial_sort(std::begin(state.amounts)+24, std::end(state.amounts), std::end(state.amounts), std::greater{});
+        break;
+
+      case ALGORITHM_TWO_TRIANGLES_DOWN:
+        // 6. two triangles down
+        std::partial_sort(std::begin(state.amounts), std::begin(state.amounts) + 8, std::begin(state.amounts) + 8, std::greater{});
+        std::partial_sort(std::begin(state.amounts)+8, std::begin(state.amounts)+16, std::begin(state.amounts)+16, std::less{});
+        std::partial_sort(std::begin(state.amounts)+16, std::begin(state.amounts)+24, std::begin(state.amounts)+24, std::greater{});
+        std::partial_sort(std::begin(state.amounts)+24, std::end(state.amounts), std::end(state.amounts), std::less{});
+        break;
+
+      case ALGORITHM_RANDOM_SQUARE_LOW:
+        // 7. random square low high
+        std::sort(std::begin(state.amounts), std::end(state.amounts));
+        std::shuffle(std::begin(state.amounts), std::begin(state.amounts)+16, g);
+        std::shuffle(std::begin(state.amounts)+16, std::end(state.amounts), g);
+        break;
+
+      case ALGORITHM_RANDOM_SQUARE_HIGH:
+        // 8. random square high low
+        std::sort(std::begin(state.amounts), std::end(state.amounts), std::greater{});
+        std::shuffle(std::begin(state.amounts), std::begin(state.amounts)+16, g);
+        std::shuffle(std::begin(state.amounts)+16, std::end(state.amounts), g);
+        break;
+    }
+  }
+
   void randomizeSequence() {
     // randomize the whole sequence
     for (int i = 0; i < 32; i++) {
       state.steps[i] = randomProb();
       state.amounts[i] = randomProb();
+      state.amountsBackup[i] = state.amounts[i];
     }
+
+    sortByAlgorithm();
+
+    // TODO: space out the skips?
+
+    
+    //for (int i=0; i < 32; i++) {
+    //  printf("%.2f ", state.amounts[i]);
+    //}
+    //printf("\n");
   }
 
   float process() {
@@ -331,6 +428,11 @@ struct StepInstrument {
       // trigger notes, advance sequencer, etc
       if (stepCount == 0) {
         randomizeSequence();
+      }
+      int algorithm = state.algorithm.getScaled();
+      if (algorithm != previousAlgorithm) {
+        previousAlgorithm = algorithm;
+        sortByAlgorithm();
       }
 
       if (isPlayedStep()) {
@@ -395,14 +497,15 @@ struct StepInstrument {
   float cachedFrequency;
   float cachedCutoff;
   float lastPlayedAmount;
+  int previousAlgorithm;
   StepState state;
   StepController controller;
   Metro clock;
-  LadderFilter filter;
-  Oscillator oscillator;
   DecayEnvelope volumeEnvelope;
   DecayEnvelope pitchEnvelope;
   DecayEnvelope cutoffEnvelope;
+  LadderFilter filter;
+  Oscillator oscillator;
 };
 
 }  // namespace platform
