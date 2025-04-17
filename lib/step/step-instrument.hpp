@@ -327,13 +327,14 @@ struct StepInstrument {
     std::random_device rd;
     std::mt19937 g(rd());
 
+    // get back to the original random order
+    // (we could also just shuffle again?)
+    for (int i=0; i < 32; i++) {
+      state.amounts[i] = state.amountsBackup[i];
+    }
+
     switch (state.algorithm.getScaled()) {
       case ALGORITHM_NONE:
-        // get back to the original random order
-        // (we could also just shuffle again?)
-        for (int i=0; i < 32; i++) {
-          state.amounts[i] = state.amountsBackup[i];
-        }
         break;
 
       case ALGORITHM_RAMP_UP:
