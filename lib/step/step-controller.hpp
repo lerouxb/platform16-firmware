@@ -33,23 +33,23 @@ struct StepController {
     state.resonance.setValue(pots.getInterpolatedValue(15));
     */
 
-    state.bpm.setValue(pots.getInterpolatedValue(K4));
-    state.volume.setValue(pots.getInterpolatedValue(K9));
-    state.pitch.setValue(pots.getInterpolatedValue(K8));
-    state.cutoff.setValue(pots.getInterpolatedValue(K13));
+    state.bpm.setValue(pots.getInterpolatedValue(K7));
+    state.volume.setValue(pots.getInterpolatedValue(K4));
+    state.pitch.setValue(pots.getInterpolatedValue(K12));
+    state.cutoff.setValue(pots.getInterpolatedValue(K14));
 
-    state.stepCount.setValue(pots.getInterpolatedValue(K6));
-    state.volumeDecay.setValue(pots.getInterpolatedValue(K5));
-    state.pitchDecay.setValue(pots.getInterpolatedValue(K12));
-    state.cutoffDecay.setValue(pots.getInterpolatedValue(K16));
+    state.stepCount.setValue(pots.getInterpolatedValue(K3));
+    state.volumeDecay.setValue(pots.getInterpolatedValue(K2));
+    state.pitchDecay.setValue(pots.getInterpolatedValue(K8));
+    state.cutoffDecay.setValue(pots.getInterpolatedValue(K9));
 
-    state.skips.setValue(pots.getInterpolatedValue(K3));
-    state.volumeAmount.setValue(pots.getInterpolatedValue(K2));
+    state.skips.setValue(pots.getInterpolatedValue(K6));
+    state.volumeAmount.setValue(pots.getInterpolatedValue(K1));
     state.pitchAmount.setValue(pots.getInterpolatedValue(K15));
-    state.cutoffAmount.setValue(pots.getInterpolatedValue(K14));
+    state.cutoffAmount.setValue(pots.getInterpolatedValue(K16));
 
-    state.algorithm.setValue(pots.getInterpolatedValue(K1));
-    state.drive.setValue(pots.getInterpolatedValue(K7));
+    state.algorithm.setValue(pots.getInterpolatedValue(K5));
+    state.drive.setValue(pots.getInterpolatedValue(K13));
     state.scale.setValue(pots.getInterpolatedValue(K10));
     state.resonance.setValue(pots.getInterpolatedValue(K11));
   }
