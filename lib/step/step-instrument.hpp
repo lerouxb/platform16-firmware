@@ -2,6 +2,7 @@
 #define PLATFORM_STEP_INSTRUMENT_H
 
 #include "../decay.hpp"
+#include "../gpio.hpp"
 #include "../ladder.hpp"
 #include "../metro.hpp"
 #include "../oscillator.hpp"
@@ -161,7 +162,9 @@ float notes[] = {
 
 struct StepInstrument {
   StepInstrument(Pots& pots)
-    : controller{pots}, changed{true}, cachedVolume{0}, cachedFrequency{0}, cachedCutoff{0}, lastPlayedAmount{0}, previousAlgorithm{0} {};
+    : controller{pots}, changed{true}, cachedVolume{0}, cachedFrequency{0},
+    cachedCutoff{0}, lastPlayedAmount{0}, previousAlgorithm{0},
+    previousClockState{false}, clockTickOffset{0} {};
 
   void init(float sampleRateIn) {
     sampleRate = sampleRateIn;
@@ -186,7 +189,12 @@ struct StepInstrument {
   float getTickFrequency() {
     // TODO: move into a custom BPM parameter so we don't unnecessarily keep
     // recalculating this
-    return state.bpm.getScaled() / 60.f * 4.f;  // 16th notes, not quarter notes
+    float value = state.bpm.getScaled();
+    if (value < 0.005) {
+      // if it is close to zero, then just stop the clock
+      return 0.f;
+    }
+    return value / 60.f * 4.f;  // 16th notes, not quarter notes
   }
 
   bool isPlayedStep() {
@@ -424,6 +432,15 @@ struct StepInstrument {
     float cutoffDecay = state.cutoffDecay.getScaled();
 
     if (clock.process()) {
+      if (clockTickOffset == 0) {
+        gpio_put(CLOCK_OUT_PIN, true);
+      } else {
+        gpio_put(CLOCK_OUT_PIN, false);
+      }
+      clockTickOffset++;
+      if (clockTickOffset == 2) {
+        clockTickOffset = 0;
+      }
       //printf("%.2f\n", sampleRate);
 
       // trigger notes, advance sequencer, etc
@@ -499,6 +516,9 @@ struct StepInstrument {
   float cachedCutoff;
   float lastPlayedAmount;
   int previousAlgorithm;
+  bool previousClockState;
+  int clockTimeout;
+  int clockTickOffset;
   StepState state;
   StepController controller;
   Metro clock;

@@ -12,8 +12,10 @@ namespace platform {
 // the instrument file because various combinations of them once you add
 // "amounts" and "amount" dynamically ends up requiring the conversion again.
 
-// TODO: 0 to 140 so that we can turn if off entirely and use the external clock only
-using BPMParameter = ExponentialParameter<1.f, 240.f, 1.5f>;
+// Pocket Operators say they can do 240 BPM, but when clocked in SY4 it seems to
+// only reliably handle up to about 200. Options are to lower this limit or to
+// just be mindful when connecting a pocket operator to clock out
+using BPMParameter = ExponentialParameter<0.f, 240.f, 1.5f>;
 //using BPMParameter = IntegerRangeParameter<30, 240>;
 using StepsParameter = IntegerRangeParameter<0, 31>;
 //using DestinationParameter = IntegerRangeParameter<0, 2>;

@@ -19,6 +19,7 @@
 #include "pico/binary_info.h"
 #include "pico/stdlib.h"
 
+#include "lib/gpio.hpp"
 #include "lib/pots.hpp"
 //#include "lib/chord/chord-instrument.hpp"
 #include "lib/step/step-instrument.hpp"
@@ -34,15 +35,6 @@ bi_decl(bi_3pins_with_names(PICO_AUDIO_I2S_DATA_PIN,
 
 
 #define SAMPLES_PER_BUFFER 256
-
-#define MUTE_PIN 22
-
-#define S0_PIN 12
-#define S1_PIN 13
-#define S2_PIN 14
-#define S3_PIN 15
-// #define COM 26 # ADC0
-
 
 struct audio_buffer_pool* init_audio() {
 
@@ -92,6 +84,13 @@ int main() {
   gpio_init(MUTE_PIN);
   gpio_set_dir(MUTE_PIN, GPIO_OUT);
   gpio_put(MUTE_PIN, true);
+
+  gpio_init(CLOCK_IN_PIN);
+  gpio_set_dir(CLOCK_IN_PIN, GPIO_IN);
+  
+  gpio_init(CLOCK_OUT_PIN);
+  gpio_set_dir(CLOCK_OUT_PIN, GPIO_OUT);
+  gpio_put(CLOCK_OUT_PIN, false);
 
   platform::Pots pots(S0_PIN, S1_PIN, S2_PIN, S3_PIN);
   pots.init();
