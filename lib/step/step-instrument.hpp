@@ -48,7 +48,7 @@ float safeDecayTime(float decayTime) {
 }
 
 float maybeDecay(float decay, float value) {
-  return decay > 9.999 ? 1.f : value;
+  return decay > 9.8 ? 1.f : value;
 }
 
 /*
@@ -431,7 +431,9 @@ struct StepInstrument {
     float pitchDecay = state.pitchDecay.getScaled();
     float cutoffDecay = state.cutoffDecay.getScaled();
 
-    if (clock.process()) {
+    bool clockState = gpio_get(CLOCK_IN_PIN);
+
+    if (clock.process() || (clockState && clockState != previousClockState)) {
       if (clockTickOffset == 0) {
         gpio_put(CLOCK_OUT_PIN, true);
       } else {
@@ -469,6 +471,8 @@ struct StepInstrument {
         state.step = 0;
       }
     }
+
+    previousClockState = clockState;
 
     clock.setFreq(getTickFrequency());
     filter.setRes(state.resonance.getScaled() * 1.8f);

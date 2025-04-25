@@ -43,7 +43,7 @@ add_executable(platform16
         platform16.cpp
         )
 
-target_link_libraries(platform16 pico_stdlib hardware_adc pico_audio_i2s)
+target_link_libraries(platform16 pico_stdlib hardware_adc pico_audio_i2s pico_rand)
 
 
 target_compile_definitions(platform16 PRIVATE

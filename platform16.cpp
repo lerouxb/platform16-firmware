@@ -18,6 +18,7 @@
 #include "pico/audio_i2s.h"
 #include "pico/binary_info.h"
 #include "pico/stdlib.h"
+#include "pico/rand.h"
 
 #include "lib/gpio.hpp"
 #include "lib/pots.hpp"
@@ -72,6 +73,9 @@ struct audio_buffer_pool* init_audio() {
 
 
 int main() {
+  // we could also just use get_rand_32() everywhere, but I'm just using it to
+  // get a random seed for the c rand() function for now
+  srand(get_rand_32());
   stdio_init_all();
 
   // sleep_ms(10000);
