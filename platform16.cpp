@@ -22,6 +22,7 @@
 
 #include "lib/gpio.hpp"
 #include "lib/pots.hpp"
+#include "lib/buttons.hpp"
 //#include "lib/chord/chord-instrument.hpp"
 #include "lib/step/step-instrument.hpp"
 
@@ -98,8 +99,9 @@ int main() {
 
   platform::Pots pots(S0_PIN, S1_PIN, S2_PIN, S3_PIN);
   pots.init();
+  platform::ButtonInput bootButton;
   //platform::ChordInstrument instrument(pots);
-  platform::StepInstrument instrument(pots);
+  platform::StepInstrument instrument(pots, bootButton);
   instrument.init(SAMPLE_RATE);
 
   struct audio_buffer_pool* ap = init_audio();
@@ -107,6 +109,7 @@ int main() {
   uint64_t total = 0;
 
   while (true) {
+    bool bootButtonState = getBootButton();
     pots.process();
     instrument.update();
 
@@ -118,6 +121,8 @@ int main() {
 
     int16_t* samples = (int16_t*)buffer->buffer->bytes;
     for (uint i = 0; i < buffer->max_sample_count; i++) {
+      bootButton.update(bootButtonState);
+      //printf("%d, %d, %d\n", bootButtonState, bootButton.isDown, bootButton.isPressed);
       float sample = instrument.process();
       int16_t sampleInt = (int16_t)(sample * 32767.f);
       samples[i * 2] = sampleInt;

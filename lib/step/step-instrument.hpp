@@ -7,6 +7,7 @@
 #include "../metro.hpp"
 #include "../oscillator.hpp"
 #include "../pots.hpp"
+#include "../buttons.hpp"
 #include "../utils.hpp"
 #include "step-controller.hpp"
 #include "step-state.hpp"
@@ -161,10 +162,10 @@ float notes[] = {
 };
 
 struct StepInstrument {
-  StepInstrument(Pots& pots)
-    : controller{pots}, changed{true}, cachedVolume{0}, cachedFrequency{0},
-    cachedCutoff{0}, lastPlayedAmount{0}, previousAlgorithm{0},
-    previousClockState{false}, clockTickOffset{0} {};
+  StepInstrument(Pots& pots, ButtonInput& bootButton)
+    : controller{pots}, bootButton{bootButton}, changed{true}, cachedVolume{0},
+    cachedFrequency{0}, cachedCutoff{0}, lastPlayedAmount{0},
+    previousAlgorithm{0}, previousClockState{false}, clockTickOffset{0} {};
 
   void init(float sampleRateIn) {
     sampleRate = sampleRateIn;
@@ -433,7 +434,7 @@ struct StepInstrument {
 
     bool clockState = gpio_get(CLOCK_IN_PIN);
 
-    if (clock.process() || (clockState && clockState != previousClockState)) {
+    if (clock.process() || bootButton.isPressed || (clockState && clockState != previousClockState)) {
       if (clockTickOffset == 0) {
         gpio_put(CLOCK_OUT_PIN, true);
       } else {
@@ -471,6 +472,7 @@ struct StepInstrument {
         state.step = 0;
       }
     }
+
 
     previousClockState = clockState;
 
@@ -523,13 +525,14 @@ struct StepInstrument {
   bool previousClockState;
   int clockTimeout;
   int clockTickOffset;
+  ButtonInput &bootButton;
+  LadderFilter filter;
   StepState state;
   StepController controller;
   Metro clock;
   DecayEnvelope volumeEnvelope;
   DecayEnvelope pitchEnvelope;
   DecayEnvelope cutoffEnvelope;
-  LadderFilter filter;
   Oscillator oscillator;
 };
 
