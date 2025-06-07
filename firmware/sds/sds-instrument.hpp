@@ -1,16 +1,16 @@
 #ifndef PLATFORM_STEP_INSTRUMENT_H
 #define PLATFORM_STEP_INSTRUMENT_H
 
-#include "../buttons.hpp"
-#include "../decay.hpp"
-#include "../gpio.hpp"
-#include "../ladder.hpp"
-#include "../metro.hpp"
-#include "../oscillator.hpp"
-#include "../pots.hpp"
-#include "../utils.hpp"
-#include "step-controller.hpp"
-#include "step-state.hpp"
+#include "../../lib/buttons.hpp"
+#include "../../lib/decay.hpp"
+#include "../../lib/gpio.hpp"
+#include "../../lib/ladder.hpp"
+#include "../../lib/metro.hpp"
+#include "../../lib/oscillator.hpp"
+#include "../../lib/pots.hpp"
+#include "../../lib/utils.hpp"
+#include "sds-controller.hpp"
+#include "sds-state.hpp"
 
 #include <algorithm>
 #include <functional>
@@ -166,8 +166,8 @@ float notes[] = {
   /*B7*/ 3951.066,
   /*C8*/ 4186.009};
 
-struct StepInstrument {
-  StepInstrument(Pots& pots, ButtonInput& bootButton)
+struct SDSInstrument {
+  SDSInstrument(Pots& pots, ButtonInput& bootButton)
     : controller{pots},
       bootButton{bootButton},
       changed{true},
@@ -715,9 +715,11 @@ struct StepInstrument {
       // add a dead zone around the middle of the knob,
       // only evolve if the random probability is greater than the current
       // absolute evolve value
+      bool evolved = false;
       if (evolveAbs > 0.1f && evolveAbs/4.f > randomProb()) {
+        evolved = true;
         if (evolve > 0.f) {
-          state.amounts[state.step] = randomProb();
+          state.amountsBackup[state.step] = randomProb();
           //printf("evolve amount %d %.2f\n", state.step, state.amounts[state.step]);
         }
         else {
@@ -731,7 +733,7 @@ struct StepInstrument {
         randomizeSequence();
       }
       int algorithm = state.algorithm.getScaled();
-      if (algorithm != previousAlgorithm) {
+      if (algorithm != previousAlgorithm || evolved) {
         previousAlgorithm = algorithm;
         sortByAlgorithm();
       }
@@ -796,7 +798,7 @@ struct StepInstrument {
     return sample;
   }
 
-  StepState* getState() {
+  SDSState* getState() {
     return &state;
   }
 
@@ -813,8 +815,8 @@ struct StepInstrument {
   int clockTimeout;
   int clockTickOffset;
   ButtonInput& bootButton;
-  StepState state;
-  StepController controller;
+  SDSState state;
+  SDSController controller;
   Metro clock;
   DecayEnvelope volumeEnvelope;
   DecayEnvelope pitchEnvelope;

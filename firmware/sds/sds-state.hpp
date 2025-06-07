@@ -1,7 +1,7 @@
 #ifndef PLATFORM_STEP_STATE_H
 #define PLATFORM_STEP_STATE_H
 
-#include "../parameters.hpp"
+#include "../../lib/parameters.hpp"
 #include <algorithm>
 #include <array>
 
@@ -29,7 +29,7 @@ using DecayParameter = ExponentialParameter<0.f, 10.f, 3.f>;
 using EvolveParameter = FloatRangeParameter<-1.f, 1.f>;
 
 
-struct StepState {
+struct SDSState {
   BPMParameter bpm;
   RawParameter volume;
   RawParameter pitch;
@@ -57,7 +57,7 @@ struct StepState {
   std::array<float, 32> amounts;  
   std::array<float, 32> amountsBackup;  
 
-  StepState()
+  SDSState()
     : bpm{120.f},
       volume{0},
       pitch{0},

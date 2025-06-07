@@ -23,8 +23,7 @@
 #include "lib/gpio.hpp"
 #include "lib/pots.hpp"
 #include "lib/buttons.hpp"
-//#include "lib/chord/chord-instrument.hpp"
-#include "lib/step/step-instrument.hpp"
+#include "firmware/sds/sds-instrument.hpp"
 
 using namespace platform;
 
@@ -101,8 +100,7 @@ int main() {
   platform::Pots pots(S0_PIN, S1_PIN, S2_PIN, S3_PIN);
   pots.init();
   platform::ButtonInput bootButton;
-  //platform::ChordInstrument instrument(pots);
-  platform::StepInstrument instrument(pots, bootButton);
+  platform::SDSInstrument instrument(pots, bootButton);
   instrument.init(SAMPLE_RATE);
 
   struct audio_buffer_pool* ap = init_audio();

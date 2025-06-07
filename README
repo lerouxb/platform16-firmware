@@ -1,0 +1,11 @@
+# Platform 16
+
+.
+├── firmware
+│   └── sds/ - Stochastic Decay (Subtractive)
+├── lib/ - Various utilities, dsp libraries, etc for use by firmwares.
+├── CMakeLists.txt
+├── pico_extras_import.cmake
+├── pico_sdk_import.cmake
+├── platform16.cpp - The main platform16 application.
+└── README

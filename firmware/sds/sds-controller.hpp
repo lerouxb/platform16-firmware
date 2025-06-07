@@ -1,15 +1,15 @@
 #ifndef PLATFORM_STEP_CONTROLLER_H
 #define PLATFORM_STEP_CONTROLLER_H
 
-#include "step-state.hpp"
-#include "../pots.hpp"
+#include "sds-state.hpp"
+#include "../../lib/pots.hpp"
 
 namespace platform {
 
-struct StepController {
-  StepController(Pots &pots) : pots{pots} {};
+struct SDSController {
+  SDSController(Pots &pots) : pots{pots} {};
 
-  void update(StepState& state) {
+  void update(SDSState& state) {
     state.bpm.setValue(pots.getInterpolatedValue(K7));
     state.volume.setValue(pots.getInterpolatedValue(K4));
     state.pitch.setValue(pots.getInterpolatedValue(K12));
