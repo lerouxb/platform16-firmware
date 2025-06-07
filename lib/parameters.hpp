@@ -71,7 +71,6 @@ struct IntegerRangeParameter {
 // stores a value between 0 and 1, but scales it to a value between min and max,
 // linearly.
 // so 0 becomes min and 1 becomes max. rounds to the nearest integer
-/*
 template<float min, float max>
 struct FloatRangeParameter {
   float value;
@@ -85,26 +84,25 @@ struct FloatRangeParameter {
     setScaled(value);
   };
 
-  void setValue(auto valueIn) {
+  void setValue(float valueIn) {
     value = fclamp(valueIn, 0.f, 1.f);
     scaled = _getScaled();
   }
 
-  int _getScaled() {
+  float _getScaled() {
     return value * (max-min) + min;
   }
 
-  int getScaled() {
+  float getScaled() {
     return scaled;
   }
 
-  void setScaled(int input) {
-    int cappedInput = fclamp(input, min, max);
+  void setScaled(float input) {
+    float cappedInput = fclamp(input, min, max);
     value = ((float) (cappedInput - min)) / (float) (max-min);
     scaled = input;
   }
 };
-*/
 
 // stores a value between 0 and 1, but scales it between min and max,
 // exponentially.

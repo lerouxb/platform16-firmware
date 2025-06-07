@@ -13,7 +13,8 @@ namespace platform {
 // the button. This is for some added contact bounce immunity. Should be quite
 // quick.
 //const auto debounceTimeoutTicks = 100;
-const auto debounceTimeoutTicks = 256; // the number of samples in a buffer
+//const auto debounceTimeoutTicks = 256; // the number of samples in a buffer
+const auto debounceTimeoutTicks = 32;
 
 // How long after a button is pressed down it has for it to be released in order
 // to count as a single press. Should be shorter than longTimeoutTicks.

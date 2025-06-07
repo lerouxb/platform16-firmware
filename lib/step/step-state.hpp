@@ -21,11 +21,12 @@ using StepsParameter = IntegerRangeParameter<0, 31>;
 //using DestinationParameter = IntegerRangeParameter<0, 2>;
 using ScaleParameter = IntegerRangeParameter<0, 6>;
 
-using AlgorithmParameter = IntegerRangeParameter<0, 8>;
+using AlgorithmParameter = IntegerRangeParameter<0, 12>;
 
 using FrequencyParameter = ExponentialParameter<27.5f, 1000.f, 3.5f>;
 using CutoffParameter = ExponentialParameter<5.f, HALF_SAMPLE_RATE, 3.f>;
 using DecayParameter = ExponentialParameter<0.f, 10.f, 3.f>;
+using EvolveParameter = FloatRangeParameter<-1.f, 1.f>;
 
 
 struct StepState {
@@ -45,7 +46,8 @@ struct StepState {
   RawParameter cutoffAmount;
 
   AlgorithmParameter algorithm;
-  OverdriveParameter drive;
+  //OverdriveParameter drive;
+  EvolveParameter evolve;
   ScaleParameter scale;
   RawParameter resonance;
 
@@ -67,7 +69,8 @@ struct StepState {
       cutoffDecay{0},
 
       algorithm{0},
-      drive{0},
+      //drive{0.5},
+      evolve{0},
       scale{0},
       resonance{0},
 

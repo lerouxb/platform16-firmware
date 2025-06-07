@@ -77,11 +77,12 @@ int main() {
   // we could also just use get_rand_32() everywhere, but I'm just using it to
   // get a random seed for the c rand() function for now
   srand(get_rand_32());
+
+  // TODO: can we make this optional and only enable for debugging?
   stdio_init_all();
 
-  // sleep_ms(10000);
-
   adc_init();
+  // TODO: do we need this?
   adc_set_temp_sensor_enabled(true);
   adc_gpio_init(26);
   adc_select_input(0);
@@ -109,7 +110,7 @@ int main() {
   uint64_t total = 0;
 
   while (true) {
-    bool bootButtonState = getBootButton();
+    bool bootButtonState = false;
     pots.process();
     instrument.update();
 
@@ -121,9 +122,15 @@ int main() {
 
     int16_t* samples = (int16_t*)buffer->buffer->bytes;
     for (uint i = 0; i < buffer->max_sample_count; i++) {
+      // checking the boot button is quite slow, so how frequently we check it
+      // is a compromise and unfortunately that means we can miss quick presses
+      if (i % 16 == 0) {
+        bootButtonState = getBootButton();
+      }
       bootButton.update(bootButtonState);
       //printf("%d, %d, %d\n", bootButtonState, bootButton.isDown, bootButton.isPressed);
       float sample = instrument.process();
+      //bootButtonState = true;
       int16_t sampleInt = (int16_t)(sample * 32767.f);
       samples[i * 2] = sampleInt;
       samples[i * 2 + 1] = sampleInt;
@@ -138,7 +145,7 @@ int main() {
     
     if (end - tickStart > 1000000) {
       // this is how long we busy-waited for the audio buffers to drain in the last second because they were all full
-      //printf("%.2fms\n", total/1000.f);
+      printf("%.2fms\n", total/1000.f);
       //printf("%.2f\n", instrument.getState()->shape.value);
       //printf("%.2f\n", instrument.getState()->filterResonance.getScaled());
       //printf("%d\n", instrument.getState()->shape.getScaled());
