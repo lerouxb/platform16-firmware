@@ -170,10 +170,8 @@ struct SDSInstrument {
   SDSInstrument(Pots& pots, ButtonInput& bootButton)
     : controller{pots},
       bootButton{bootButton},
-      changed{true},
-      cachedVolume{0},
-      cachedFrequency{0},
-      cachedCutoff{0},
+      playedPitchChanged{true},
+      cachedRawPitch{0},
       lastPlayedAmount{0},
       previousAlgorithm{0},
       previousClockState{false},
@@ -248,10 +246,6 @@ struct SDSInstrument {
   }
 
   float getVolume() {
-    if (!changed) {
-      return cachedVolume;
-    }
-
     float value = state.volume.getScaled();
 
     value += state.volumeAmount.getScaled() * lastPlayedAmount;
@@ -266,17 +260,19 @@ struct SDSInstrument {
 
     value = powf(value, 2.f);
 
-    cachedVolume = value;
     return value;
   }
 
   float getOscillatorFrequency() {
-    if (!changed) {
-      return cachedFrequency;
-    }
-
     // TODO: the curve still needs work.
-    float rawValue = state.pitch.getScaled();
+
+    int scale = state.scale.getScaled();
+
+    float rawValue = playedPitchChanged || !scale ? state.pitch.getScaled() : cachedRawPitch;
+    // if the pitch is not quantized, then the pitch always changes, otherwise
+    // only when we get to a played step
+    playedPitchChanged = scale ? false : true;
+    cachedRawPitch = rawValue;
 
     float note = 76.f * rawValue;
     int noteIndex = (int)note;
@@ -284,7 +280,6 @@ struct SDSInstrument {
     float noteFraction = note - noteIndex;
     float value = notes[noteIndex];
 
-    int scale = state.scale.getScaled();
 
     if (!scale) {
       value = value + (notes[noteIndex + 1] - notes[noteIndex]) * noteFraction;
@@ -357,14 +352,10 @@ struct SDSInstrument {
     }
 
     previousScale = scale;
-    cachedFrequency = value;
     return value;
   }
 
   float getFilterCutoff() {
-    if (!changed) {
-      return cachedCutoff;
-    }
     float value = state.cutoff.value;
 
     value += state.cutoffAmount.value * lastPlayedAmount;
@@ -376,7 +367,6 @@ struct SDSInstrument {
 
     value = fclamp(value, min, max);
 
-    cachedCutoff = value;
     return value;
   }
 
@@ -709,39 +699,41 @@ struct SDSInstrument {
         clockTickOffset = 0;
       }
 
-      // printf("%.2f\n", sampleRate);
-      float evolve = state.evolve.getScaled();
-      float evolveAbs = fabs(state.evolve.getScaled());
-      // add a dead zone around the middle of the knob,
-      // only evolve if the random probability is greater than the current
-      // absolute evolve value
-      bool evolved = false;
-      if (evolveAbs > 0.1f && evolveAbs/4.f > randomProb()) {
-        evolved = true;
-        if (evolve > 0.f) {
-          state.amountsBackup[state.step] = randomProb();
-          //printf("evolve amount %d %.2f\n", state.step, state.amounts[state.step]);
-        }
-        else {
-          state.steps[state.step] = randomProb();
-          //printf("evolve step %d %.2f\n", state.step, state.steps[state.step]);
-        }
-      }
-
-      // trigger notes, advance sequencer, etc
-      if (stepCount == 0) {
-        randomizeSequence();
-      }
-      int algorithm = state.algorithm.getScaled();
-      if (algorithm != previousAlgorithm || evolved) {
-        previousAlgorithm = algorithm;
-        sortByAlgorithm();
-      }
-
       if (isPlayedStep()) {
-        // recalculate volume, frequency and cutoff
-        changed = true;
+        // recalculate volume, frequency and cutoff, the steps..
+        playedPitchChanged = true;
         lastPlayedAmount = state.amounts[state.step];
+
+        // printf("%.2f\n", sampleRate);
+        float evolve = state.evolve.getScaled();
+        float evolveAbs = fabs(state.evolve.getScaled());
+        // add a dead zone around the middle of the knob,
+        // only evolve if the random probability is greater than the current
+        // absolute evolve value
+        bool evolved = false;
+        if (evolveAbs > 0.1f && evolveAbs/4.f > randomProb()) {
+          evolved = true;
+          if (evolve > 0.f) {
+            state.amountsBackup[state.step] = randomProb();
+            //printf("evolve amount %d %.2f\n", state.step, state.amounts[state.step]);
+          }
+          else {
+            state.steps[state.step] = randomProb();
+            //printf("evolve step %d %.2f\n", state.step, state.steps[state.step]);
+          }
+        }
+
+        // trigger notes, advance sequencer, etc
+        if (stepCount == 0) {
+          randomizeSequence();
+        }
+        int algorithm = state.algorithm.getScaled();
+        // if the algorithm has changed or the sequence evolved, resort the
+        // amounts. So all algorithms other than random keep their basic shape
+        if (algorithm != previousAlgorithm || evolved) {
+          previousAlgorithm = algorithm;
+          sortByAlgorithm();
+        }
 
         volumeEnvelope.trigger();
         pitchEnvelope.trigger();
@@ -786,11 +778,9 @@ struct SDSInstrument {
     maxSample = std::max(maxSample, sample);
 
     // cache what we can until the next clock tick
-    // NOTE: I'm mostly leaving this off so that you can constinuously turn the
-    // knobs and they immediately have an effect, but it is sometimes nice to be
-    // able to cache per step and then any logging when recalculating them
-    // happens at step frequency and not sample frequency.
-    // changed = false;
+    // The raw pitch value can drift very slightly and then quantize to
+    // an adjacent pitch on different samples within the same step. So when
+    // we're in a step we cache the raw pitch value
 
     sample = softClip(sample);
 
@@ -804,10 +794,8 @@ struct SDSInstrument {
 
   private:
   float sampleRate;
-  bool changed;
-  float cachedVolume;
-  float cachedFrequency;
-  float cachedCutoff;
+  bool playedPitchChanged;
+  float cachedRawPitch;
   float lastPlayedAmount;
   int previousAlgorithm;
   bool previousClockState;
@@ -815,6 +803,7 @@ struct SDSInstrument {
   int clockTimeout;
   int clockTickOffset;
   ButtonInput& bootButton;
+  LadderFilter filter;
   SDSState state;
   SDSController controller;
   Metro clock;
@@ -822,7 +811,6 @@ struct SDSInstrument {
   DecayEnvelope pitchEnvelope;
   DecayEnvelope cutoffEnvelope;
   Oscillator oscillator;
-  LadderFilter filter;
 
   float minSample;
   float maxSample;
