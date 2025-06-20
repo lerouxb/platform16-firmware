@@ -241,7 +241,6 @@ struct SDSInstrument {
     that you can't end up in a spot where it drifts back and forth over a
     step's value. But that could also be a feature.
     */
-    // TODO: take into account algorithm
     return state.steps[state.step] >= state.skips.getScaled();
   }
 
@@ -654,6 +653,11 @@ struct SDSInstrument {
       state.amountsBackup[i] = state.amounts[i];
     }
 
+    if (state.stepCount.getScaled() != 0) {
+      // always play the down beat, otherwise when you shorten stepCount a sequence might sound off
+      state.steps[0] = 1.f;
+    }
+
     sortByAlgorithm();
 
     // TODO: space out the skips?
@@ -669,10 +673,6 @@ struct SDSInstrument {
     // TODO: 0, 2, 4, 8, 10, 16, 32?
     uint stepCount = state.stepCount.getScaled();
 
-    if (stepCount != 0) {
-      // always play the down beat, otherwise when you shorten stepCount a sequence might sound off
-      state.steps[0] = 1.f;
-    }
 
     float volumeDecay = state.volumeDecay.getScaled();
     float pitchDecay = state.pitchDecay.getScaled();
@@ -699,6 +699,10 @@ struct SDSInstrument {
         clockTickOffset = 0;
       }
 
+      if (stepCount == 0) {
+        randomizeSequence();
+      }
+
       if (isPlayedStep()) {
         // recalculate volume, frequency and cutoff, the steps..
         playedPitchChanged = true;
@@ -721,12 +725,14 @@ struct SDSInstrument {
             state.steps[state.step] = randomProb();
             //printf("evolve step %d %.2f\n", state.step, state.steps[state.step]);
           }
+
+          if (state.stepCount.getScaled() != 0) {
+            // always play the down beat, otherwise when you shorten stepCount a sequence might sound off
+            state.steps[0] = 1.f;
+          }
         }
 
         // trigger notes, advance sequencer, etc
-        if (stepCount == 0) {
-          randomizeSequence();
-        }
         int algorithm = state.algorithm.getScaled();
         // if the algorithm has changed or the sequence evolved, resort the
         // amounts. So all algorithms other than random keep their basic shape
@@ -803,7 +809,6 @@ struct SDSInstrument {
   int clockTimeout;
   int clockTickOffset;
   ButtonInput& bootButton;
-  LadderFilter filter;
   SDSState state;
   SDSController controller;
   Metro clock;
@@ -811,6 +816,7 @@ struct SDSInstrument {
   DecayEnvelope pitchEnvelope;
   DecayEnvelope cutoffEnvelope;
   Oscillator oscillator;
+  LadderFilter filter;
 
   float minSample;
   float maxSample;
