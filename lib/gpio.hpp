@@ -19,6 +19,15 @@ namespace platform {
 #define S3_PIN 15
 // #define COM 26 # ADC0
 
+bool getBootButton() {
+    // Unfortunately, reading the boot button is unreliable on my second batch
+    // of boards and it can crash the firmware. It is also really slow (taking
+    // about a quarter of all available time in my setup at the time of writing)
+    // and kinda unreliable - you have to "slowly" press the button to make sure
+    // it gets checked in time.
+    return false;
+}
+/*
 bool __no_inline_not_in_flash_func(getBootButton)() {
     const uint CS_PIN_INDEX = 1;
 
@@ -53,6 +62,7 @@ bool __no_inline_not_in_flash_func(getBootButton)() {
 
     return button_state;
 }
+*/
 
 }  // namespace platform
 

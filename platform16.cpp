@@ -142,7 +142,9 @@ int main() {
     total += timeTaken;
     
     if (end - tickStart > 1000000) {
-      // this is how long we busy-waited for the audio buffers to drain in the last second because they were all full
+      // this is how long we busy-waited for the audio buffers to drain in the
+      // last second because they were all full. ie. roughly how much of each
+      // second we have "spare"
       printf("%.2fms\n", total/1000.f);
       //printf("%.2f\n", instrument.getState()->shape.value);
       //printf("%.2f\n", instrument.getState()->filterResonance.getScaled());
