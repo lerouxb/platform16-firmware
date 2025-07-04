@@ -37,8 +37,6 @@
 #define ALGORITHM_TRIANGLE_DOWN 4
 #define ALGORITHM_TWO_TRIANGLES_UP 5
 #define ALGORITHM_TWO_TRIANGLES_DOWN 6
-// #define ALGORITHM_RANDOM_SQUARE_LOW 7
-// #define ALGORITHM_RANDOM_SQUARE_HIGH 8
 #define ALGORITHM_FOUR_TRIANGLES_UP 7
 #define ALGORITHM_FOUR_TRIANGLES_DOWN 8
 #define ALGORITHM_RAMP_UP_DOWN 9
@@ -172,7 +170,9 @@ struct SDSInstrument {
       bootButton{bootButton},
       playedPitchChanged{true},
       cachedRawPitch{0},
-      lastPlayedAmount{0},
+      lastPlayedPitchAmount{0},
+      lastPlayedFilterAmount{0},
+      lastPlayedVolumeAmount{0},
       previousAlgorithm{0},
       previousClockState{false},
       previousScale{0},
@@ -247,7 +247,7 @@ struct SDSInstrument {
   float getVolume() {
     float value = state.volume.getScaled();
 
-    value += state.volumeAmount.getScaled() * lastPlayedAmount;
+    value += state.volumeAmount.getScaled() * lastPlayedVolumeAmount;
 
     //value = fclamp(value, 0.f, 1.f);
     
@@ -286,7 +286,7 @@ struct SDSInstrument {
 
     // scale up up to 1 octave
     // TODO: 2 might be nice?
-    float rawAmount = state.pitchAmount.getScaled() * lastPlayedAmount;
+    float rawAmount = state.pitchAmount.getScaled() * lastPlayedPitchAmount;
     // printf("%f\n", multiplier);
 
     if (scale) {
@@ -357,7 +357,7 @@ struct SDSInstrument {
   float getFilterCutoff() {
     float value = state.cutoff.value;
 
-    value += state.cutoffAmount.value * lastPlayedAmount;
+    value += state.cutoffAmount.value * lastPlayedFilterAmount;
     value = fclamp(value, 0.f, 1.f);
 
     float max = HALF_SAMPLE_RATE;
@@ -377,7 +377,7 @@ struct SDSInstrument {
     // get back to the original random order
     // (we could also just shuffle again?)
     for (int i = 0; i < 32; i++) {
-      state.amounts[i] = state.amountsBackup[i];
+      state.pitchAmounts[i] = state.pitchAmountsBackup[i];
     }
 
     switch (state.algorithm.getScaled()) {
@@ -386,173 +386,154 @@ struct SDSInstrument {
 
       case ALGORITHM_RAMP_UP: {
         // 1. ramp up
-        std::sort(std::begin(state.amounts), std::end(state.amounts));
+        std::sort(std::begin(state.pitchAmounts), std::end(state.pitchAmounts));
         break;
       }
 
       case ALGORITHM_RAMP_DOWN: {
         // 2. ramp down
-        std::sort(std::begin(state.amounts), std::end(state.amounts), std::greater{});
+        std::sort(std::begin(state.pitchAmounts), std::end(state.pitchAmounts), std::greater{});
         break;
       }
 
       case ALGORITHM_TRANGLE_UP: {
         // 3. triangle up
-        std::partial_sort(std::begin(state.amounts),
-                          std::begin(state.amounts) + 16,
-                          std::begin(state.amounts) + 16,
+        std::partial_sort(std::begin(state.pitchAmounts),
+                          std::begin(state.pitchAmounts) + 16,
+                          std::begin(state.pitchAmounts) + 16,
                           std::less{});
-        std::partial_sort(std::begin(state.amounts) + 16,
-                          std::end(state.amounts),
-                          std::end(state.amounts),
+        std::partial_sort(std::begin(state.pitchAmounts) + 16,
+                          std::end(state.pitchAmounts),
+                          std::end(state.pitchAmounts),
                           std::greater{});
         break;
       }
 
       case ALGORITHM_TRIANGLE_DOWN: {
         // 4. triangle down
-        std::partial_sort(std::begin(state.amounts),
-                          std::begin(state.amounts) + 16,
-                          std::begin(state.amounts) + 16,
+        std::partial_sort(std::begin(state.pitchAmounts),
+                          std::begin(state.pitchAmounts) + 16,
+                          std::begin(state.pitchAmounts) + 16,
                           std::greater{});
-        std::partial_sort(std::begin(state.amounts) + 16,
-                          std::end(state.amounts),
-                          std::end(state.amounts),
+        std::partial_sort(std::begin(state.pitchAmounts) + 16,
+                          std::end(state.pitchAmounts),
+                          std::end(state.pitchAmounts),
                           std::less{});
         break;
       }
 
       case ALGORITHM_TWO_TRIANGLES_UP: {
         // 5. two triangles up
-        std::partial_sort(std::begin(state.amounts),
-                          std::begin(state.amounts) + 8,
-                          std::begin(state.amounts) + 8,
+        std::partial_sort(std::begin(state.pitchAmounts),
+                          std::begin(state.pitchAmounts) + 8,
+                          std::begin(state.pitchAmounts) + 8,
                           std::less{});
-        std::partial_sort(std::begin(state.amounts) + 8,
-                          std::begin(state.amounts) + 16,
-                          std::begin(state.amounts) + 16,
+        std::partial_sort(std::begin(state.pitchAmounts) + 8,
+                          std::begin(state.pitchAmounts) + 16,
+                          std::begin(state.pitchAmounts) + 16,
                           std::greater{});
-        std::partial_sort(std::begin(state.amounts) + 16,
-                          std::begin(state.amounts) + 24,
-                          std::begin(state.amounts) + 24,
+        std::partial_sort(std::begin(state.pitchAmounts) + 16,
+                          std::begin(state.pitchAmounts) + 24,
+                          std::begin(state.pitchAmounts) + 24,
                           std::less{});
-        std::partial_sort(std::begin(state.amounts) + 24,
-                          std::end(state.amounts),
-                          std::end(state.amounts),
+        std::partial_sort(std::begin(state.pitchAmounts) + 24,
+                          std::end(state.pitchAmounts),
+                          std::end(state.pitchAmounts),
                           std::greater{});
         break;
       }
 
       case ALGORITHM_TWO_TRIANGLES_DOWN: {
         // 6. two triangles down
-        std::partial_sort(std::begin(state.amounts),
-                          std::begin(state.amounts) + 8,
-                          std::begin(state.amounts) + 8,
+        std::partial_sort(std::begin(state.pitchAmounts),
+                          std::begin(state.pitchAmounts) + 8,
+                          std::begin(state.pitchAmounts) + 8,
                           std::greater{});
-        std::partial_sort(std::begin(state.amounts) + 8,
-                          std::begin(state.amounts) + 16,
-                          std::begin(state.amounts) + 16,
+        std::partial_sort(std::begin(state.pitchAmounts) + 8,
+                          std::begin(state.pitchAmounts) + 16,
+                          std::begin(state.pitchAmounts) + 16,
                           std::less{});
-        std::partial_sort(std::begin(state.amounts) + 16,
-                          std::begin(state.amounts) + 24,
-                          std::begin(state.amounts) + 24,
+        std::partial_sort(std::begin(state.pitchAmounts) + 16,
+                          std::begin(state.pitchAmounts) + 24,
+                          std::begin(state.pitchAmounts) + 24,
                           std::greater{});
-        std::partial_sort(std::begin(state.amounts) + 24,
-                          std::end(state.amounts),
-                          std::end(state.amounts),
+        std::partial_sort(std::begin(state.pitchAmounts) + 24,
+                          std::end(state.pitchAmounts),
+                          std::end(state.pitchAmounts),
                           std::less{});
         break;
       }
 
-      /*
-      case ALGORITHM_RANDOM_SQUARE_LOW:
-      {
-        // 7. random square low high
-        std::sort(std::begin(state.amounts), std::end(state.amounts));
-        std::shuffle(std::begin(state.amounts), std::begin(state.amounts)+16, g);
-        std::shuffle(std::begin(state.amounts)+16, std::end(state.amounts), g);
-        break;
-      }
-
-      case ALGORITHM_RANDOM_SQUARE_HIGH:
-      {
-        // 8. random square high low
-        std::sort(std::begin(state.amounts), std::end(state.amounts), std::greater{});
-        std::shuffle(std::begin(state.amounts), std::begin(state.amounts)+16, g);
-        std::shuffle(std::begin(state.amounts)+16, std::end(state.amounts), g);
-        break;
-      }
-      */
       case ALGORITHM_FOUR_TRIANGLES_UP: {
         // 7. four triangles up
-        std::partial_sort(std::begin(state.amounts),
-                          std::begin(state.amounts) + 4,
-                          std::begin(state.amounts) + 4,
+        std::partial_sort(std::begin(state.pitchAmounts),
+                          std::begin(state.pitchAmounts) + 4,
+                          std::begin(state.pitchAmounts) + 4,
                           std::less{});
-        std::partial_sort(std::begin(state.amounts) + 4,
-                          std::begin(state.amounts) + 8,
-                          std::begin(state.amounts) + 8,
+        std::partial_sort(std::begin(state.pitchAmounts) + 4,
+                          std::begin(state.pitchAmounts) + 8,
+                          std::begin(state.pitchAmounts) + 8,
                           std::greater{});
-        std::partial_sort(std::begin(state.amounts) + 8,
-                          std::begin(state.amounts) + 12,
-                          std::begin(state.amounts) + 12,
+        std::partial_sort(std::begin(state.pitchAmounts) + 8,
+                          std::begin(state.pitchAmounts) + 12,
+                          std::begin(state.pitchAmounts) + 12,
                           std::less{});
-        std::partial_sort(std::begin(state.amounts) + 12,
-                          std::begin(state.amounts) + 16,
-                          std::begin(state.amounts) + 16,
+        std::partial_sort(std::begin(state.pitchAmounts) + 12,
+                          std::begin(state.pitchAmounts) + 16,
+                          std::begin(state.pitchAmounts) + 16,
                           std::greater{});
-        std::partial_sort(std::begin(state.amounts) + 16,
-                          std::begin(state.amounts) + 20,
-                          std::begin(state.amounts) + 20,
+        std::partial_sort(std::begin(state.pitchAmounts) + 16,
+                          std::begin(state.pitchAmounts) + 20,
+                          std::begin(state.pitchAmounts) + 20,
                           std::less{});
-        std::partial_sort(std::begin(state.amounts) + 20,
-                          std::begin(state.amounts) + 24,
-                          std::begin(state.amounts) + 24,
+        std::partial_sort(std::begin(state.pitchAmounts) + 20,
+                          std::begin(state.pitchAmounts) + 24,
+                          std::begin(state.pitchAmounts) + 24,
                           std::greater{});
-        std::partial_sort(std::begin(state.amounts) + 24,
-                          std::begin(state.amounts) + 28,
-                          std::begin(state.amounts) + 28,
+        std::partial_sort(std::begin(state.pitchAmounts) + 24,
+                          std::begin(state.pitchAmounts) + 28,
+                          std::begin(state.pitchAmounts) + 28,
                           std::less{});
-        std::partial_sort(std::begin(state.amounts) + 28,
-                          std::end(state.amounts),
-                          std::end(state.amounts),
+        std::partial_sort(std::begin(state.pitchAmounts) + 28,
+                          std::end(state.pitchAmounts),
+                          std::end(state.pitchAmounts),
                           std::greater{});
         break;
       }
 
       case ALGORITHM_FOUR_TRIANGLES_DOWN: {
         // 8. four triangles down
-        std::partial_sort(std::begin(state.amounts),
-                          std::begin(state.amounts) + 4,
-                          std::begin(state.amounts) + 4,
+        std::partial_sort(std::begin(state.pitchAmounts),
+                          std::begin(state.pitchAmounts) + 4,
+                          std::begin(state.pitchAmounts) + 4,
                           std::greater{});
-        std::partial_sort(std::begin(state.amounts) + 4,
-                          std::begin(state.amounts) + 8,
-                          std::begin(state.amounts) + 8,
+        std::partial_sort(std::begin(state.pitchAmounts) + 4,
+                          std::begin(state.pitchAmounts) + 8,
+                          std::begin(state.pitchAmounts) + 8,
                           std::less{});
-        std::partial_sort(std::begin(state.amounts) + 8,
-                          std::begin(state.amounts) + 12,
-                          std::begin(state.amounts) + 12,
+        std::partial_sort(std::begin(state.pitchAmounts) + 8,
+                          std::begin(state.pitchAmounts) + 12,
+                          std::begin(state.pitchAmounts) + 12,
                           std::greater{});
-        std::partial_sort(std::begin(state.amounts) + 12,
-                          std::begin(state.amounts) + 16,
-                          std::begin(state.amounts) + 16,
+        std::partial_sort(std::begin(state.pitchAmounts) + 12,
+                          std::begin(state.pitchAmounts) + 16,
+                          std::begin(state.pitchAmounts) + 16,
                           std::less{});
-        std::partial_sort(std::begin(state.amounts) + 16,
-                          std::begin(state.amounts) + 20,
-                          std::begin(state.amounts) + 20,
+        std::partial_sort(std::begin(state.pitchAmounts) + 16,
+                          std::begin(state.pitchAmounts) + 20,
+                          std::begin(state.pitchAmounts) + 20,
                           std::greater{});
-        std::partial_sort(std::begin(state.amounts) + 20,
-                          std::begin(state.amounts) + 24,
-                          std::begin(state.amounts) + 24,
+        std::partial_sort(std::begin(state.pitchAmounts) + 20,
+                          std::begin(state.pitchAmounts) + 24,
+                          std::begin(state.pitchAmounts) + 24,
                           std::less{});
-        std::partial_sort(std::begin(state.amounts) + 24,
-                          std::begin(state.amounts) + 28,
-                          std::begin(state.amounts) + 28,
+        std::partial_sort(std::begin(state.pitchAmounts) + 24,
+                          std::begin(state.pitchAmounts) + 28,
+                          std::begin(state.pitchAmounts) + 28,
                           std::greater{});
-        std::partial_sort(std::begin(state.amounts) + 28,
-                          std::end(state.amounts),
-                          std::end(state.amounts),
+        std::partial_sort(std::begin(state.pitchAmounts) + 28,
+                          std::end(state.pitchAmounts),
+                          std::end(state.pitchAmounts),
                           std::less{});
         break;
       }
@@ -561,14 +542,14 @@ struct SDSInstrument {
         // 9. ramp up down
         float sorted[32];
         std::copy(
-          std::begin(state.amountsBackup), std::end(state.amountsBackup), std::begin(sorted));
+          std::begin(state.pitchAmountsBackup), std::end(state.pitchAmountsBackup), std::begin(sorted));
         std::sort(std::begin(sorted), std::end(sorted), std::less{});
 
         for (int i = 0; i < 32; i++) {
           if (i % 2 == 0) {
-            state.amounts[i] = sorted[i / 2];
+            state.pitchAmounts[i] = sorted[i / 2];
           } else {
-            state.amounts[i] = sorted[16 + (i / 2)];
+            state.pitchAmounts[i] = sorted[16 + (i / 2)];
           }
         }
         break;
@@ -579,14 +560,14 @@ struct SDSInstrument {
         // 10. ramp down up
         float sorted[32];
         std::copy(
-          std::begin(state.amountsBackup), std::end(state.amountsBackup), std::begin(sorted));
+          std::begin(state.pitchAmountsBackup), std::end(state.pitchAmountsBackup), std::begin(sorted));
         std::sort(std::begin(sorted), std::end(sorted), std::greater{});
 
         for (int i = 0; i < 32; i++) {
           if (i % 2 == 0) {
-            state.amounts[i] = sorted[i / 2];
+            state.pitchAmounts[i] = sorted[i / 2];
           } else {
-            state.amounts[i] = sorted[16 + (i / 2)];
+            state.pitchAmounts[i] = sorted[16 + (i / 2)];
           }
         }
         break;
@@ -596,7 +577,7 @@ struct SDSInstrument {
         // 11. triangle up down
         float sorted[32];
         std::copy(
-          std::begin(state.amountsBackup), std::end(state.amountsBackup), std::begin(sorted));
+          std::begin(state.pitchAmountsBackup), std::end(state.pitchAmountsBackup), std::begin(sorted));
 
         std::partial_sort(std::begin(sorted),
                           std::begin(sorted) + 16,
@@ -609,9 +590,9 @@ struct SDSInstrument {
 
         for (int i = 0; i < 32; i++) {
           if (i % 2 == 0) {
-            state.amounts[i] = sorted[i / 2];
+            state.pitchAmounts[i] = sorted[i / 2];
           } else {
-            state.amounts[i] = sorted[16 + (i / 2)];
+            state.pitchAmounts[i] = sorted[16 + (i / 2)];
           }
         }
         break;
@@ -622,7 +603,7 @@ struct SDSInstrument {
         // 12. triangle down up
         float sorted[32];
         std::copy(
-          std::begin(state.amountsBackup), std::end(state.amountsBackup), std::begin(sorted));
+          std::begin(state.pitchAmountsBackup), std::end(state.pitchAmountsBackup), std::begin(sorted));
 
         std::partial_sort(std::begin(sorted),
                           std::begin(sorted) + 16,
@@ -635,9 +616,9 @@ struct SDSInstrument {
 
         for (int i = 0; i < 32; i++) {
           if (i % 2 == 0) {
-            state.amounts[i] = sorted[i / 2];
+            state.pitchAmounts[i] = sorted[i / 2];
           } else {
-            state.amounts[i] = sorted[16 + (i / 2)];
+            state.pitchAmounts[i] = sorted[16 + (i / 2)];
           }
         }
         break;
@@ -649,8 +630,10 @@ struct SDSInstrument {
     // randomize the whole sequence
     for (int i = 0; i < 32; i++) {
       state.steps[i] = randomProb();
-      state.amounts[i] = randomProb();
-      state.amountsBackup[i] = state.amounts[i];
+      state.pitchAmounts[i] = randomProb();
+      state.pitchAmountsBackup[i] = state.pitchAmounts[i];
+      state.filterAmounts[i] = randomProb();
+      state.volumeAmounts[i] = randomProb();
     }
 
     if (state.stepCount.getScaled() != 0) {
@@ -711,7 +694,9 @@ struct SDSInstrument {
       if (isPlayedStep()) {
         // recalculate volume, frequency and cutoff, the steps..
         playedPitchChanged = true;
-        lastPlayedAmount = state.amounts[state.step];
+        lastPlayedPitchAmount = state.pitchAmounts[state.step];
+        lastPlayedFilterAmount = state.filterAmounts[state.step];
+        lastPlayedVolumeAmount = state.volumeAmounts[state.step];
 
         // printf("%.2f\n", sampleRate);
         float evolve = state.evolve.getScaled();
@@ -723,7 +708,10 @@ struct SDSInstrument {
         if (evolveAbs > 0.1f && evolveAbs/4.f > randomProb()) {
           evolved = true;
           if (evolve > 0.f) {
-            state.amountsBackup[state.step] = randomProb();
+            state.volumeAmounts[state.step] = randomProb();
+            state.filterAmounts[state.step] = randomProb();
+            // change the backup, because we're going to sort by algorithm
+            state.pitchAmountsBackup[state.step] = randomProb();
             //printf("evolve amount %d %.2f\n", state.step, state.amounts[state.step]);
           }
           else {
@@ -804,7 +792,9 @@ struct SDSInstrument {
   float sampleRate;
   bool playedPitchChanged;
   float cachedRawPitch;
-  float lastPlayedAmount;
+  float lastPlayedPitchAmount;
+  float lastPlayedFilterAmount;
+  float lastPlayedVolumeAmount;
   int previousAlgorithm;
   bool previousClockState;
   int previousScale;

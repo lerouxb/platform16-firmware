@@ -54,9 +54,12 @@ struct SDSState {
 
   uint step = 0;
   std::array<float, 32> steps;  
-  // TODO: make separate arrays for each destination
-  std::array<float, 32> amounts;  
-  std::array<float, 32> amountsBackup;  
+  // amounts are the amount of modulation for each step
+  std::array<float, 32> pitchAmounts;
+  std::array<float, 32> filterAmounts;
+  std::array<float, 32> volumeAmounts;
+  // keep a backup so we can sort them by algorithm, yet go back to the original random order
+  std::array<float, 32> pitchAmountsBackup;  
 
   SDSState()
     : bpm{120.f},
@@ -83,8 +86,10 @@ struct SDSState {
       step{0} {
     for (size_t i = 0; i < 16; i++) {
       steps[i] = 0.f;
-      amounts[i] = 0.f;
-      amountsBackup[i] = 0.f;
+      pitchAmounts[i] = 0.f;
+      filterAmounts[i] = 0.f;
+      volumeAmounts[i] = 0.f;
+      pitchAmountsBackup[i] = 0.f;
     }
   }
 };
