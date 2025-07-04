@@ -2,7 +2,7 @@
 #define PLATFORM_STEP_INSTRUMENT_H
 
 #include "../../lib/buttons.hpp"
-#include "../../lib/decay.hpp"
+#include "../../lib/attackdecay.hpp"
 #include "../../lib/gpio.hpp"
 #include "../../lib/ladder.hpp"
 #include "../../lib/metro.hpp"
@@ -48,14 +48,14 @@
 
 namespace platform {
 
-float safeDecayTime(float decayTime) {
-  // 1/48000 (the sample rate) = 0.000020833333333333333
-  // 1/24000 = 0.000041666666666666665
-  return decayTime == 0 ? 0.000041666666666666665 : decayTime;
-}
-
-float maybeDecay(float decay, float value) {
-  return decay > 9.8 ? 1.f : value;
+float maybeAttackDecay(float env, float value) {
+  // close to the center means sustain
+  // TODO: we should probably subtract this when calculating the ends of the envelope in attackdecay
+  if (value > 0.45 && value < 0.55) {
+    // sustain
+    return 0.5f;
+  }
+  return value;
 }
 
 /*
@@ -673,10 +673,15 @@ struct SDSInstrument {
     // TODO: 0, 2, 4, 8, 10, 16, 32?
     uint stepCount = state.stepCount.getScaled();
 
+    // 0 to 1
+    float volumeEnv = state.volumeEnvelope.getScaled();
+    float pitchEnv = state.pitchEnvelope.getScaled();
+    float cutoffEnv = state.cutoffEnvelope.getScaled();
 
-    float volumeDecay = state.volumeDecay.getScaled();
-    float pitchDecay = state.pitchDecay.getScaled();
-    float cutoffDecay = state.cutoffDecay.getScaled();
+    // doing this before we might trigger the envelopes to make sure that the initial direction is set properly
+    volumeEnvelope.setTimeAndDirection(volumeEnv);
+    pitchEnvelope.setTimeAndDirection(pitchEnv);
+    cutoffEnvelope.setTimeAndDirection(cutoffEnv);
 
     // the pin is inverted because it is tied to an NPN transistor
     bool clockState = !gpio_get(CLOCK_IN_PIN);
@@ -759,13 +764,10 @@ struct SDSInstrument {
     clock.setFreq(getTickFrequency());
     filter.setRes(state.resonance.getScaled() * 1.8f);
 
-    volumeEnvelope.setDecayTime(safeDecayTime(volumeDecay));
-    pitchEnvelope.setDecayTime(safeDecayTime(pitchDecay));
-    cutoffEnvelope.setDecayTime(safeDecayTime(cutoffDecay));
 
-    float frequency = getOscillatorFrequency() * maybeDecay(pitchDecay, pitchEnvelope.process());
+    float frequency = getOscillatorFrequency() * maybeAttackDecay(pitchEnv, pitchEnvelope.process());
     oscillator.setFreq(frequency);
-    float cutoff = getFilterCutoff() * maybeDecay(cutoffDecay, cutoffEnvelope.process());
+    float cutoff = getFilterCutoff() * maybeAttackDecay(cutoffEnv, cutoffEnvelope.process());
     filter.setFreq(fmax(5.f, cutoff));
 
     float sample = oscillator.process(); // -0.5 to 0.5
@@ -778,7 +780,7 @@ struct SDSInstrument {
 
     // volume
     // sample = sample * state.volume.getScaled();
-    sample = sample * getVolume() * maybeDecay(volumeDecay, volumeEnvelope.process());
+    sample = sample * getVolume() * maybeAttackDecay(volumeEnv, volumeEnvelope.process());
 
     minSample = std::min(minSample, sample);
     maxSample = std::max(maxSample, sample);
@@ -812,9 +814,9 @@ struct SDSInstrument {
   SDSState state;
   SDSController controller;
   Metro clock;
-  DecayEnvelope volumeEnvelope;
-  DecayEnvelope pitchEnvelope;
-  DecayEnvelope cutoffEnvelope;
+  AttackDecayEnvelope volumeEnvelope;
+  AttackDecayEnvelope pitchEnvelope;
+  AttackDecayEnvelope cutoffEnvelope;
   Oscillator oscillator;
   LadderFilter filter;
 

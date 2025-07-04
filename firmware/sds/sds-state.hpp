@@ -23,9 +23,10 @@ using ScaleParameter = IntegerRangeParameter<0, 6>;
 
 using AlgorithmParameter = IntegerRangeParameter<0, 12>;
 
-using FrequencyParameter = ExponentialParameter<27.5f, 1000.f, 3.5f>;
+using FrequencyParameter = ExponentialParameter<27.5f, 1000.f, 2.0f>;
 using CutoffParameter = ExponentialParameter<5.f, HALF_SAMPLE_RATE, 3.f>;
-using DecayParameter = ExponentialParameter<0.f, 10.f, 3.f>;
+//using AttackDecayParameter = ExponentialParameter<-10.f, 10.f, 3.f>;
+//using AttackDecayParameter = FloatRangeParameter<-1.f, 1.f>;
 using EvolveParameter = FloatRangeParameter<-1.f, 1.f>;
 
 
@@ -36,9 +37,9 @@ struct SDSState {
   CutoffParameter cutoff;
 
   StepsParameter stepCount;
-  DecayParameter volumeDecay;
-  DecayParameter pitchDecay;
-  DecayParameter cutoffDecay;
+  RawParameter volumeEnvelope;
+  RawParameter pitchEnvelope;
+  RawParameter cutoffEnvelope;
 
   RawParameter skips;
   RawParameter volumeAmount;
@@ -64,9 +65,9 @@ struct SDSState {
       cutoff{16000},
 
       stepCount{0},
-      volumeDecay{0},
-      pitchDecay{0},
-      cutoffDecay{0},
+      volumeEnvelope{0},
+      pitchEnvelope{0},
+      cutoffEnvelope{0},
 
       algorithm{0},
       //drive{0.5},

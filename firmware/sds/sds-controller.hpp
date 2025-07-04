@@ -16,9 +16,9 @@ struct SDSController {
     state.cutoff.setValue(pots.getInterpolatedValue(K14));
 
     state.stepCount.setValue(pots.getInterpolatedValue(K3));
-    state.volumeDecay.setValue(pots.getInterpolatedValue(K2));
-    state.pitchDecay.setValue(pots.getInterpolatedValue(K8));
-    state.cutoffDecay.setValue(pots.getInterpolatedValue(K9));
+    state.volumeEnvelope.setValue(pots.getInterpolatedValue(K2));
+    state.pitchEnvelope.setValue(pots.getInterpolatedValue(K8));
+    state.cutoffEnvelope.setValue(pots.getInterpolatedValue(K9));
 
     state.skips.setValue(pots.getInterpolatedValue(K6));
     state.volumeAmount.setValue(pots.getInterpolatedValue(K1));
