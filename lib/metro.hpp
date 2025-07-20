@@ -31,10 +31,9 @@ class Metro {
    */
   uint8_t process() {
     phs += phsInc;
-    if(phs >= TWOPI_F)
-    {
-        phs -= TWOPI_F;
-        return 1;
+    if (phs >= TWOPI_F) {
+      phs -= TWOPI_F;
+      return 1;
     }
     return 0;
   }
@@ -55,6 +54,12 @@ class Metro {
    */
   inline float getFreq() {
     return freq;
+  }
+
+  /** Returns current value for phase.
+   */
+  inline float getPhase() {
+    return phs;
   }
 
   private:

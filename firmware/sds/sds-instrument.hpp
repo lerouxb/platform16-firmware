@@ -168,6 +168,9 @@ struct SDSInstrument {
   SDSInstrument(Pots& pots, ButtonInput& bootButton)
     : controller{pots},
       bootButton{bootButton},
+      isExternalClock{false},
+      samplesSinceLastClockTick{0},
+      externalClockFrequency{0.f},
       playedPitchChanged{true},
       cachedRawPitch{0},
       lastPlayedPitchAmount{0},
@@ -207,12 +210,17 @@ struct SDSInstrument {
   float getTickFrequency() {
     // TODO: move into a custom BPM parameter so we don't unnecessarily keep
     // recalculating this
-    float value = state.bpm.getScaled();
-    if (value < 0.005) {
-      // if it is close to zero, then just stop the clock
-      return 0.f;
+    if (isExternalClock) {
+      // TODO: for now we just ignore using tempo as multipler/divider
+      return externalClockFrequency;
+    } else {
+      float value = state.bpm.getScaled();
+      if (value < 0.005) {
+        // if it is close to zero, then just stop the clock
+        return 0.f;
+      }
+      return value / 60.f * 4.f;  // 16th notes, not quarter notes
     }
-    return value / 60.f * 4.f;  // 16th notes, not quarter notes
   }
 
   bool isPlayedStep() {
@@ -355,6 +363,7 @@ struct SDSInstrument {
   }
 
   float getFilterCutoff() {
+    /*
     float value = state.cutoff.value;
 
     value += state.cutoffAmount.value * lastPlayedFilterAmount;
@@ -363,6 +372,36 @@ struct SDSInstrument {
     float max = HALF_SAMPLE_RATE;
     float min = 5.f;
     value = powf(value, 3.0f) * (max - min) + min;
+
+    value = fclamp(value, min, max);
+
+    return value;
+    */
+
+    // scale the cutoff by the pitch amount so that it tracks the pitch
+    // ie. no pitch amount (the root note) means no cutoff change, but some
+    // pitch amount means we move the cutoff up the same amount.
+    // TODO: this doesn't account for scale quantization. 
+    // TODO: if we have the base oscillator frequency and the current one we can
+    // work out the pitch amount to use
+    //float rawPitchAmount = state.pitchAmount.value * lastPlayedPitchAmount;
+    //float value = state.cutoff.scaleValue(state.cutoff.value * (1.f + rawPitchAmount));
+    
+    // I just prefer when the cutoff does not track the pitch. If you track the
+    // pitch, then pitch dominates the sequence. If you don't, then filter
+    // cutoff tends to dominate. And this isn't really so much a pitch
+    // sequencer? Sequences tend to be more interesting that way, although
+    // that's subjective.
+    float value = state.cutoff.getScaled();
+
+    // Apply a curve to the cutoff amount so it starts to make a difference
+    // without having to turn the knob all the way up.
+    float rawFilterAmount = powf(state.cutoffAmount.value * lastPlayedFilterAmount, 0.5f);
+    //float rawFilterAmount = state.cutoffAmount.value * lastPlayedFilterAmount;
+    value += state.cutoff.scaleValue(rawFilterAmount);
+
+    float min = 5.f;
+    float max = HALF_SAMPLE_RATE;
 
     value = fclamp(value, min, max);
 
@@ -652,6 +691,65 @@ struct SDSInstrument {
     // printf("\n");
   }
 
+  float processOverdrive(float sample, float amount, float volume) {
+    float level = 1.f - volume;
+    if (level == 0) {
+      return sample;
+    }
+
+    float in = softClip(sample / level);
+
+    // times 2 is arbitrary
+    float out = powf(fabs(in), 1.f/(1.f+amount*2.f)); 
+    if (in < 0.f) {
+      out = -out;
+    }
+
+    out = out * level;
+    return out;
+  }
+
+  bool isClockTick() {
+    samplesSinceLastClockTick++;
+
+    bool tick = false;
+
+    bool clockConnectedState = gpio_get(CLOCK_IN_CONNECTED_PIN);
+    if (clockConnectedState) {
+      // external clock
+      isExternalClock = true;
+
+      // the pin is inverted because it is tied to an NPN transistor
+      bool clockState = !gpio_get(CLOCK_IN_PIN);
+      if (clockState != previousClockState) {
+        // clock state changed
+        previousClockState = clockState;
+
+        if (clockState) {
+          externalClockFrequency =  sampleRate / samplesSinceLastClockTick * 2.f;
+          samplesSinceLastClockTick = 0.f;
+          if (clock.getPhase() > 0.5f) {
+            // Make the clock tick now because the external clock is faster than
+            // our calculations and we'd miss a tick if we don't. If the phase
+            // is < 0.5 then we assume the click is slower than our calculations
+            // and we don't tick again because we'd tick twice in quick succession.
+            tick = true;
+          }
+          clock.reset();
+          // (Don't change the clock frequency now because we assume we'll set
+          // the frequency in the process method based on what the
+          // divider/multiplier is set to anyway)
+        }
+      }
+    } else {
+      // internal clock
+      isExternalClock = false;
+    }
+
+    // either internal or external
+    return clock.process() || tick;
+  }
+
   float process() {
     // TODO: 0, 2, 4, 8, 10, 16, 32?
     uint stepCount = state.stepCount.getScaled();
@@ -666,16 +764,14 @@ struct SDSInstrument {
     pitchEnvelope.setTimeAndDirection(pitchEnv);
     cutoffEnvelope.setTimeAndDirection(cutoffEnv);
 
-    // the pin is inverted because it is tied to an NPN transistor
-    bool clockState = !gpio_get(CLOCK_IN_PIN);
-
-    if (clock.process() || bootButton.isPressed ||
-        (clockState && clockState != previousClockState)) {
-
-      //printf("minSample: %.2f, maxSample: %.2f\n", minSample, maxSample);
+    if (isClockTick()) {
+      printf("minSample: %.2f, maxSample: %.2f\n", minSample, maxSample);
       minSample = 0;
       maxSample = 0;
 
+      // TODO: just change this to the number of ticks. we can mod 2.
+      // Going with the teenage engineering approach of clock ticks on every
+      // second 16th note. Same as for interpreting clock inputs.
       if (clockTickOffset == 0) {
         // the pin is inverted because it is tied to an NPN transistor
         gpio_put(CLOCK_OUT_PIN, false);
@@ -747,31 +843,45 @@ struct SDSInstrument {
     }
 
 
-    previousClockState = clockState;
-
     clock.setFreq(getTickFrequency());
     filter.setRes(state.resonance.getScaled() * 1.8f);
 
 
+    float sample = 0.f;
+
+    // oscillator (if not stopped)
     float frequency = getOscillatorFrequency() * maybeAttackDecay(pitchEnv, pitchEnvelope.process());
-    oscillator.setFreq(frequency);
+    //printf("frequency: %.2f\n", frequency);
+    //if (state.scale.getScaled() || frequency > 28.f) {
+    if (frequency > 28.f) {
+      oscillator.setFreq(frequency);
+      sample = oscillator.process(); // -0.5 to 0.5
+    }
+
+    // noise
+    float noise = (randomProb() * 2.f - 1.f) * state.noise.getScaled();
+    //printf("noise: %.2f\n", noise);
+    sample += noise;
+
+    // filter
     float cutoff = getFilterCutoff() * maybeAttackDecay(cutoffEnv, cutoffEnvelope.process());
     filter.setFreq(fmax(5.f, cutoff));
-
-    float sample = oscillator.process(); // -0.5 to 0.5
-
-    // apply the filter
     sample = filter.process(sample);
+
 
     // overdrive
     //sample = softClip(sample * state.drive.getPreGain()) * state.drive.getPostGain();
+    // why 0.35? because I just measured the likely min/max value. Just applying
+    // this so that overdrive doesn't increase the volume too much.
+    sample = processOverdrive(sample, state.drive.getScaled(), 0.35f);
+
+    minSample = std::min(minSample, sample);
+    maxSample = std::max(maxSample, sample);
 
     // volume
     // sample = sample * state.volume.getScaled();
     sample = sample * getVolume() * maybeAttackDecay(volumeEnv, volumeEnvelope.process());
 
-    minSample = std::min(minSample, sample);
-    maxSample = std::max(maxSample, sample);
 
     // cache what we can until the next clock tick
     // The raw pitch value can drift very slightly and then quantize to
@@ -779,7 +889,7 @@ struct SDSInstrument {
     // we're in a step we cache the raw pitch value
 
     sample = softClip(sample);
-
+    //sample = fclamp(sample, -1.f, 1.f);
     
     return sample;
   }
@@ -789,9 +899,13 @@ struct SDSInstrument {
   }
 
   private:
+  bool isExternalClock;
+  int samplesSinceLastClockTick;
+  float externalClockFrequency;
   float sampleRate;
   bool playedPitchChanged;
   float cachedRawPitch;
+  // TODO: also cache the filter, pitch and volume?
   float lastPlayedPitchAmount;
   float lastPlayedFilterAmount;
   float lastPlayedVolumeAmount;

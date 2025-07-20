@@ -7,8 +7,11 @@
 #include <math.h>
 #include <stdio.h>
 
-#define SAMPLE_RATE 48000
-#define HALF_SAMPLE_RATE 24000.f
+//#define SAMPLE_RATE 48000
+//#define HALF_SAMPLE_RATE 24000.f
+
+#define SAMPLE_RATE 24000
+#define HALF_SAMPLE_RATE 12000.f
 
 #include "hardware/adc.h"
 #include "hardware/clocks.h"
@@ -35,6 +38,9 @@ bi_decl(bi_3pins_with_names(PICO_AUDIO_I2S_DATA_PIN,
                             "I2S LRCK"));
 
 
+// Since there are three buffers: (256*3) / 24000 = 0.032 seconds. Or (256*3) /
+// 48000 = 0.016 seconds. Which is about the worst case amount that two periods
+// of a reconstructed / synthetic clock signal could be off by.
 #define SAMPLES_PER_BUFFER 256
 
 struct audio_buffer_pool* init_audio() {
@@ -89,6 +95,9 @@ int main() {
   gpio_init(MUTE_PIN);
   gpio_set_dir(MUTE_PIN, GPIO_OUT);
   gpio_put(MUTE_PIN, true);
+
+  gpio_init(CLOCK_IN_CONNECTED_PIN);
+  gpio_set_dir(CLOCK_IN_CONNECTED_PIN, GPIO_IN);
 
   gpio_init(CLOCK_IN_PIN);
   gpio_set_dir(CLOCK_IN_PIN, GPIO_IN);

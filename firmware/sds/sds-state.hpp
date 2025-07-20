@@ -23,11 +23,14 @@ using ScaleParameter = IntegerRangeParameter<0, 6>;
 
 using AlgorithmParameter = IntegerRangeParameter<0, 12>;
 
+//using FrequencyParameter = ExponentialParameter<27.5f, 1000.f, 2.0f>;
 using FrequencyParameter = ExponentialParameter<27.5f, 1000.f, 2.0f>;
 using CutoffParameter = ExponentialParameter<5.f, HALF_SAMPLE_RATE, 3.f>;
 //using AttackDecayParameter = ExponentialParameter<-10.f, 10.f, 3.f>;
 //using AttackDecayParameter = FloatRangeParameter<-1.f, 1.f>;
 using EvolveParameter = FloatRangeParameter<-1.f, 1.f>;
+
+using NoiseParameter = ExponentialParameter<0.f, 1.f, 0.75f>;
 
 
 struct SDSState {
@@ -35,6 +38,7 @@ struct SDSState {
   RawParameter volume;
   RawParameter pitch;
   CutoffParameter cutoff;
+  NoiseParameter noise;
 
   StepsParameter stepCount;
   RawParameter volumeEnvelope;
@@ -48,6 +52,7 @@ struct SDSState {
 
   AlgorithmParameter algorithm;
   //OverdriveParameter drive;
+  RawParameter drive;
   EvolveParameter evolve;
   ScaleParameter scale;
   RawParameter resonance;
@@ -66,10 +71,11 @@ struct SDSState {
       volume{0},
       pitch{0},
       cutoff{16000},
+      noise{0},
 
       stepCount{0},
       volumeEnvelope{0},
-      pitchEnvelope{0},
+      pitchEnvelope{0.5f},
       cutoffEnvelope{0},
 
       algorithm{0},

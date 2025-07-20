@@ -9,6 +9,7 @@
 
 namespace platform {
 
+#define CLOCK_IN_CONNECTED_PIN 2
 #define CLOCK_IN_PIN 3
 #define CLOCK_OUT_PIN 18
 #define MUTE_PIN 22

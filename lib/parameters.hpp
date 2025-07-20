@@ -126,7 +126,7 @@ struct ExponentialParameter {
   }
 
   auto _getScaled() {
-    return powf(value, exponent) * (max - min) + min;
+    return scaleValue(value);
   }
 
   auto getScaled() {
@@ -138,6 +138,13 @@ struct ExponentialParameter {
     value = powf(cappedInput - min, 1.f / exponent);
     scaled = input;
   }
+
+  // useful in case you have to scale a separate amount using the same min, max, exponent values
+  auto scaleValue(float valueIn) {
+    return powf(valueIn, exponent) * (max - min) + min;
+  }
+
+  //auto unscaleValue(float)
 };
 
 struct OverdriveParameter {
@@ -154,6 +161,9 @@ struct OverdriveParameter {
 
   void setValue(float valueIn) {
     value = fclamp(valueIn, 0.f, 1.f);
+
+    // at 0.45-ish it is at about unity gain
+    value = 0.6f * value + 0.4f;
 
     float drive = 2.f * value;
 
