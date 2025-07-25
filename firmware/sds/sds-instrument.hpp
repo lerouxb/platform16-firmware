@@ -169,6 +169,8 @@ struct SDSInstrument {
     : controller{pots},
       bootButton{bootButton},
       isExternalClock{false},
+      externalClockTicks{0},
+      clockTicks{0},
       samplesSinceLastClockTick{0},
       externalClockFrequency{0.f},
       playedPitchChanged{true},
@@ -179,7 +181,6 @@ struct SDSInstrument {
       previousAlgorithm{0},
       previousClockState{false},
       previousScale{0},
-      clockTickOffset{0},
       minSample{0},
       maxSample{0}
       {};
@@ -211,8 +212,16 @@ struct SDSInstrument {
     // TODO: move into a custom BPM parameter so we don't unnecessarily keep
     // recalculating this
     if (isExternalClock) {
-      // TODO: for now we just ignore using tempo as multipler/divider
-      return externalClockFrequency;
+      if (externalClockTicks < 2) {
+        // stop the clock until ticks arrive
+        return 0.f;
+      }
+      float position = round(state.bpm.value * 14.f);
+
+      // 0-6 is divider with 0 being 1/8, 7 is * 1, 8-14 is multiplier with 8 being 2 and 14 being 8
+      float multiplier = (position < 7.f) ? 1.f / (8.f - position) : position - 6.f;
+
+      return externalClockFrequency * multiplier;
     } else {
       float value = state.bpm.getScaled();
       if (value < 0.005) {
@@ -728,17 +737,44 @@ struct SDSInstrument {
         if (clockState) {
           externalClockFrequency =  sampleRate / samplesSinceLastClockTick * 2.f;
           samplesSinceLastClockTick = 0.f;
-          if (clock.getPhase() > 0.5f) {
-            // Make the clock tick now because the external clock is faster than
-            // our calculations and we'd miss a tick if we don't. If the phase
-            // is < 0.5 then we assume the click is slower than our calculations
-            // and we don't tick again because we'd tick twice in quick succession.
-            tick = true;
+
+          float position = round(state.bpm.value * 14.f);
+          if (position < 7.f) {
+            float divider = 8.f - position;
+            printf("clockTicks: %d, divider: %.2f\n", externalClockTicks, divider);
+
+            if (externalClockTicks % (int)divider == 0) {
+              if (clock.getPhase() > 0.5f) {
+                // Make the clock tick now because the external clock is faster than
+                // our calculations and we'd miss a tick if we don't. If the phase
+                // is < 0.5 then we assume the click is slower than our calculations
+                // and we don't tick again because we'd tick twice in quick succession.
+
+                // TODO: you can only do this trick if the clock tick counts are a multiple of each other
+                tick = true;
+              }
+              // TODO: you can only do this trick if the clock tick counts are a multiple of each other
+              clock.reset();
+            }
+          } else {
+            if (clock.getPhase() > 0.5f) {
+              // Make the clock tick now because the external clock is faster than
+              // our calculations and we'd miss a tick if we don't. If the phase
+              // is < 0.5 then we assume the click is slower than our calculations
+              // and we don't tick again because we'd tick twice in quick succession.
+
+              // TODO: you can only do this trick if the clock tick counts are a multiple of each other
+              tick = true;
+            }
+            // TODO: you can only do this trick if the clock tick counts are a multiple of each other
+            clock.reset();
           }
-          clock.reset();
+
           // (Don't change the clock frequency now because we assume we'll set
           // the frequency in the process method based on what the
           // divider/multiplier is set to anyway)
+
+          externalClockTicks++;
         }
       }
     } else {
@@ -765,6 +801,7 @@ struct SDSInstrument {
     cutoffEnvelope.setTimeAndDirection(cutoffEnv);
 
     if (isClockTick()) {
+      clockTicks++;
       printf("minSample: %.2f, maxSample: %.2f\n", minSample, maxSample);
       minSample = 0;
       maxSample = 0;
@@ -772,15 +809,11 @@ struct SDSInstrument {
       // TODO: just change this to the number of ticks. we can mod 2.
       // Going with the teenage engineering approach of clock ticks on every
       // second 16th note. Same as for interpreting clock inputs.
-      if (clockTickOffset == 0) {
+      if (clockTicks % 2 == 0) {
         // the pin is inverted because it is tied to an NPN transistor
         gpio_put(CLOCK_OUT_PIN, false);
       } else {
         gpio_put(CLOCK_OUT_PIN, true);
-      }
-      clockTickOffset++;
-      if (clockTickOffset == 2) {
-        clockTickOffset = 0;
       }
 
       if (stepCount == 0) {
@@ -900,6 +933,8 @@ struct SDSInstrument {
 
   private:
   bool isExternalClock;
+  int externalClockTicks;
+  int clockTicks;
   int samplesSinceLastClockTick;
   float externalClockFrequency;
   float sampleRate;
@@ -912,8 +947,6 @@ struct SDSInstrument {
   int previousAlgorithm;
   bool previousClockState;
   int previousScale;
-  int clockTimeout;
-  int clockTickOffset;
   ButtonInput& bootButton;
   SDSState state;
   SDSController controller;
