@@ -195,7 +195,7 @@ struct SDSInstrument {
     clock.init(getTickFrequency(), sampleRate);
 
     volumeEnvelope.init(sampleRate);
-    pitchEnvelope.init(sampleRate);
+    //pitchEnvelope.init(sampleRate);
     cutoffEnvelope.init(sampleRate);
 
     filter.init(sampleRate);
@@ -792,12 +792,12 @@ struct SDSInstrument {
 
     // 0 to 1
     float volumeEnv = state.volumeEnvelope.getScaled();
-    float pitchEnv = state.pitchEnvelope.getScaled();
+    //float pitchEnv = state.pitchEnvelope.getScaled();
     float cutoffEnv = state.cutoffEnvelope.getScaled();
 
     // doing this before we might trigger the envelopes to make sure that the initial direction is set properly
     volumeEnvelope.setTimeAndDirection(volumeEnv);
-    pitchEnvelope.setTimeAndDirection(pitchEnv);
+    //pitchEnvelope.setTimeAndDirection(pitchEnv);
     cutoffEnvelope.setTimeAndDirection(cutoffEnv);
 
     if (isClockTick()) {
@@ -864,7 +864,7 @@ struct SDSInstrument {
         }
 
         volumeEnvelope.trigger();
-        pitchEnvelope.trigger();
+        //pitchEnvelope.trigger();
         cutoffEnvelope.trigger();
       }
 
@@ -883,7 +883,7 @@ struct SDSInstrument {
     float sample = 0.f;
 
     // oscillator (if not stopped)
-    float frequency = getOscillatorFrequency() * maybeAttackDecay(pitchEnv, pitchEnvelope.process());
+    float frequency = getOscillatorFrequency();// * maybeAttackDecay(pitchEnv, pitchEnvelope.process());
     //printf("frequency: %.2f\n", frequency);
     //if (state.scale.getScaled() || frequency > 28.f) {
     if (frequency > 28.f) {
@@ -952,7 +952,7 @@ struct SDSInstrument {
   SDSController controller;
   Metro clock;
   AttackDecayEnvelope volumeEnvelope;
-  AttackDecayEnvelope pitchEnvelope;
+  //AttackDecayEnvelope pitchEnvelope;
   AttackDecayEnvelope cutoffEnvelope;
   Oscillator oscillator;
   LadderFilter filter;

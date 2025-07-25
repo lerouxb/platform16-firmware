@@ -42,7 +42,7 @@ struct SDSState {
 
   StepsParameter stepCount;
   RawParameter volumeEnvelope;
-  RawParameter pitchEnvelope;
+  //RawParameter pitchEnvelope;
   RawParameter cutoffEnvelope;
 
   RawParameter skips;
@@ -75,7 +75,7 @@ struct SDSState {
 
       stepCount{0},
       volumeEnvelope{0},
-      pitchEnvelope{0.5f},
+      //pitchEnvelope{0.5f},
       cutoffEnvelope{0},
 
       algorithm{0},
