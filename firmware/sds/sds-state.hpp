@@ -25,7 +25,7 @@ using AlgorithmParameter = IntegerRangeParameter<0, 12>;
 
 //using FrequencyParameter = ExponentialParameter<27.5f, 1000.f, 2.0f>;
 using FrequencyParameter = ExponentialParameter<27.5f, 1000.f, 2.0f>;
-using CutoffParameter = ExponentialParameter<5.f, HALF_SAMPLE_RATE, 3.f>;
+//using CutoffParameter = ExponentialParameter<5.f, HALF_SAMPLE_RATE, 3.f>;
 //using AttackDecayParameter = ExponentialParameter<-10.f, 10.f, 3.f>;
 //using AttackDecayParameter = FloatRangeParameter<-1.f, 1.f>;
 using EvolveParameter = FloatRangeParameter<-1.f, 1.f>;
@@ -37,7 +37,8 @@ struct SDSState {
   BPMParameter bpm;
   RawParameter volume;
   RawParameter pitch;
-  CutoffParameter cutoff;
+  //CutoffParameter cutoff;
+  RawParameter cutoff;
   NoiseParameter noise;
 
   StepsParameter stepCount;
@@ -68,7 +69,8 @@ struct SDSState {
     : bpm{120.f},
       volume{0},
       pitch{0},
-      cutoff{16000},
+      //cutoff{16000},
+      cutoff{0},
       noise{0},
 
       stepCount{0},

@@ -362,12 +362,32 @@ struct SDSInstrument {
     // cutoff tends to dominate. And this isn't really so much a pitch
     // sequencer? Sequences tend to be more interesting that way, although
     // that's subjective.
-    float value = state.cutoff.getScaled();
+    //float value = state.cutoff.getScaled();
 
     // Apply a curve to the cutoff amount so it starts to make a difference
     // without having to turn the knob all the way up.
+    //float rawFilterAmount = powf(state.cutoffAmount.value * lastPlayedFilterAmount, 0.5f);
+    //value += state.cutoff.scaleValue(rawFilterAmount);
+    
+
+    // All the way counter clockwise is low pass 5Hz. The middle is lowpass
+    // HALF_SAMPLE_RATE or high pass 5Hz. All the way clockwise is highpass
+    // HALF_SAMPLE_RATE.
+    float cutoffValue = state.cutoff.value < 0.5f ? state.cutoff.value * 2.f : (state.cutoff.value - 0.5f) * 2.f;
+    float value = powf(cutoffValue, 3.f) * (HALF_SAMPLE_RATE - 5.f) + 5.f;
+
     float rawFilterAmount = powf(state.cutoffAmount.value * lastPlayedFilterAmount, 0.5f);
-    value += state.cutoff.scaleValue(rawFilterAmount);
+    float amountValue = powf(rawFilterAmount, 3.f) * (HALF_SAMPLE_RATE - 5.f) + 5.f;
+
+    // when in lowpass mode, amount moves the filter up, allowing more frequencies through.
+    // when in highpass mode, amount moves the filter down, allowing more frequencies through.
+    if (state.cutoff.value < 0.5f) {
+      // low pass: add
+      value += amountValue;
+    } else {
+      // high pass: subtract
+      value -= amountValue;
+    }
 
     float min = 5.f;
     float max = HALF_SAMPLE_RATE;
@@ -831,7 +851,22 @@ struct SDSInstrument {
     sample += noise;
 
     // filter
-    float cutoff = getFilterCutoff() * maybeAttackDecay(cutoffEnv, cutoffEnvelope.process());
+    float filterCutoff = getFilterCutoff();
+    // when in lowpass mode, the envelope closes the filter towards 5Hz.
+    // when in highpass mode, the envelope closes the filter towards HALF_SAMPLE_RATE.
+    float cutoff = state.cutoff.value < 0.5f
+      ? filterCutoff * maybeAttackDecay(cutoffEnv, cutoffEnvelope.process())
+      : filterCutoff + ((HALF_SAMPLE_RATE - filterCutoff) * (1.f - maybeAttackDecay(cutoffEnv, cutoffEnvelope.process())));
+
+    //float cutoff = getFilterCutoff() * maybeAttackDecay(cutoffEnv, cutoffEnvelope.process());
+    if (state.cutoff.value < 0.5f) {
+      // low pass
+      filter.setFilterMode(LadderFilter::FilterMode::LP24);
+    } else {
+      // high pass
+      filter.setFilterMode(LadderFilter::FilterMode::HP24);
+
+    }
     filter.setFreq(fmax(5.f, cutoff));
     sample = filter.process(sample);
 
