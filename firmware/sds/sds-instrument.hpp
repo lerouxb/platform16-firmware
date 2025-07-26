@@ -17,9 +17,6 @@
 #include <math.h>
 #include <random>
 
-// TODO: the problem here is there are only pots, no switches. So it is hard to
-// tell where you are. Maybe with a pot that has an arrow and nice markings on
-// the enclosure it can work.
 #define SCALE_UNQUANTIZED 0
 #define SCALE_CHROMATIC 1
 #define SCALE_MAJOR 2
@@ -283,7 +280,6 @@ struct SDSInstrument {
 
     float note = 76.f * rawValue;
     int noteIndex = (int)note;
-    // printf("%d\n", noteIndex);
     float noteFraction = note - noteIndex;
     float value = notes[noteIndex];
 
@@ -295,7 +291,6 @@ struct SDSInstrument {
     // scale up up to 1 octave
     // TODO: 2 might be nice?
     float rawAmount = state.pitchAmount.getScaled() * lastPlayedPitchAmount;
-    // printf("%f\n", multiplier);
 
     if (scale) {
       int* scaleNotes;
@@ -349,7 +344,6 @@ struct SDSInstrument {
       }
 
       int offset = (int)(rawAmount * numScaleNotes);
-      // printf("%d\n", offset);
       value = notes[noteIndex + scaleNotes[offset]];
     } else {
       if (scale != previousScale) {
@@ -698,7 +692,7 @@ struct SDSInstrument {
           float position = round(state.bpm.value * 14.f);
           if (position < 7.f) {
             float divider = 8.f - position;
-            printf("clockTicks: %d, divider: %.2f\n", externalClockTicks, divider);
+            //printf("clockTicks: %d, divider: %.2f\n", externalClockTicks, divider);
 
             if (externalClockTicks % (int)divider == 0) {
               if (clock.getPhase() > 0.5f) {
@@ -707,10 +701,8 @@ struct SDSInstrument {
                 // is < 0.5 then we assume the click is slower than our calculations
                 // and we don't tick again because we'd tick twice in quick succession.
 
-                // TODO: you can only do this trick if the clock tick counts are a multiple of each other
                 tick = true;
               }
-              // TODO: you can only do this trick if the clock tick counts are a multiple of each other
               clock.reset();
             }
           } else {
@@ -720,10 +712,8 @@ struct SDSInstrument {
               // is < 0.5 then we assume the click is slower than our calculations
               // and we don't tick again because we'd tick twice in quick succession.
 
-              // TODO: you can only do this trick if the clock tick counts are a multiple of each other
               tick = true;
             }
-            // TODO: you can only do this trick if the clock tick counts are a multiple of each other
             clock.reset();
           }
 
@@ -744,7 +734,6 @@ struct SDSInstrument {
   }
 
   float process() {
-    // TODO: 0, 2, 4, 8, 10, 16, 32?
     uint stepCount = state.stepCount.getScaled();
 
     // 0 to 1
@@ -761,7 +750,6 @@ struct SDSInstrument {
       minSample = 0;
       maxSample = 0;
 
-      // TODO: just change this to the number of ticks. we can mod 2.
       // Going with the teenage engineering approach of clock ticks on every
       // second 16th note. Same as for interpreting clock inputs.
       if (clockTicks % 2 == 0) {
