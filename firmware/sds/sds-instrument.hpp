@@ -357,19 +357,6 @@ struct SDSInstrument {
   }
 
   float getFilterCutoff() {
-    // I just prefer when the cutoff does not track the pitch. If you track the
-    // pitch, then pitch dominates the sequence. If you don't, then filter
-    // cutoff tends to dominate. And this isn't really so much a pitch
-    // sequencer? Sequences tend to be more interesting that way, although
-    // that's subjective.
-    //float value = state.cutoff.getScaled();
-
-    // Apply a curve to the cutoff amount so it starts to make a difference
-    // without having to turn the knob all the way up.
-    //float rawFilterAmount = powf(state.cutoffAmount.value * lastPlayedFilterAmount, 0.5f);
-    //value += state.cutoff.scaleValue(rawFilterAmount);
-    
-
     // All the way counter clockwise is low pass 5Hz. The middle is lowpass
     // HALF_SAMPLE_RATE or high pass 5Hz. All the way clockwise is highpass
     // HALF_SAMPLE_RATE.
@@ -840,7 +827,7 @@ struct SDSInstrument {
     float sample = 0.f;
 
     // oscillator (if not stopped)
-    float frequency = getOscillatorFrequency();// * maybeAttackDecay(pitchEnv, pitchEnvelope.process());
+    float frequency = getOscillatorFrequency();
     if (frequency > 28.f) {
       oscillator.setFreq(frequency);
       sample = oscillator.process(); // -0.5 to 0.5
@@ -858,7 +845,6 @@ struct SDSInstrument {
       ? filterCutoff * maybeAttackDecay(cutoffEnv, cutoffEnvelope.process())
       : filterCutoff + ((HALF_SAMPLE_RATE - filterCutoff) * (1.f - maybeAttackDecay(cutoffEnv, cutoffEnvelope.process())));
 
-    //float cutoff = getFilterCutoff() * maybeAttackDecay(cutoffEnv, cutoffEnvelope.process());
     if (state.cutoff.value < 0.5f) {
       // low pass
       filter.setFilterMode(LadderFilter::FilterMode::LP24);
