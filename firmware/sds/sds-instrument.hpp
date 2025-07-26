@@ -290,7 +290,8 @@ struct SDSInstrument {
 
     // scale up up to 1 octave
     // TODO: 2 might be nice?
-    float rawAmount = state.pitchAmount.getScaled() * lastPlayedPitchAmount;
+    float normalisedValue = state.pitchAmount.value < 0.5f ? (0.5f - state.pitchAmount.value) * 2.f : (state.pitchAmount.value - 0.5f) * 2.f;
+    float rawAmount = normalisedValue * lastPlayedPitchAmount;
 
     if (scale) {
       int* scaleNotes;
@@ -344,12 +345,30 @@ struct SDSInstrument {
       }
 
       int offset = (int)(rawAmount * numScaleNotes);
-      value = notes[noteIndex + scaleNotes[offset]];
+      int newNoteIndex = (state.pitchAmount.value < 0.5f) ? noteIndex - scaleNotes[offset] : noteIndex + scaleNotes[offset];
+
+      // clamp it just in case
+      if (newNoteIndex < 0) {
+        newNoteIndex = 0;
+      }
+      if (newNoteIndex > 87) {
+        newNoteIndex = 87;
+      }
+
+      value = notes[newNoteIndex];
     } else {
       if (scale != previousScale) {
         printf("scale changed to unquantized\n");
       }
-      value += value * rawAmount;
+      if (state.pitchAmount.value >= 0.5f) {
+        // increasing pitch
+        value += value * rawAmount;
+      } else {
+        // decreasing pitch
+        value -= value * rawAmount;
+      }
+      // clamp it just in case
+      value = fclamp(value, 0.f, 22050.f); 
     }
 
     previousScale = scale;
@@ -363,17 +382,26 @@ struct SDSInstrument {
     float cutoffValue = state.cutoff.value < 0.5f ? state.cutoff.value * 2.f : (state.cutoff.value - 0.5f) * 2.f;
     float value = powf(cutoffValue, 3.f) * (HALF_SAMPLE_RATE - 5.f) + 5.f;
 
-    float rawFilterAmount = powf(state.cutoffAmount.value * lastPlayedFilterAmount, 0.5f);
+    float normalisedValue = state.cutoffAmount.value < 0.5f ? (0.5f - state.cutoffAmount.value) * 2.f : (state.cutoffAmount.value - 0.5f) * 2.f;
+    float rawFilterAmount = powf(normalisedValue * lastPlayedFilterAmount, 0.5f);
     float amountValue = powf(rawFilterAmount, 3.f) * (HALF_SAMPLE_RATE - 5.f) + 5.f;
 
     // when in lowpass mode, amount moves the filter up, allowing more frequencies through.
     // when in highpass mode, amount moves the filter down, allowing more frequencies through.
     if (state.cutoff.value < 0.5f) {
-      // low pass: add
-      value += amountValue;
+      // low pass: add when increasing
+      if (state.cutoffAmount.value >= 0.5f) {
+        value += amountValue;
+      } else {
+        value -= amountValue;
+      }
     } else {
-      // high pass: subtract
-      value -= amountValue;
+      // high pass: subtract when increasing
+      if (state.cutoffAmount.value >= 0.5f) {
+        value -= amountValue;
+      } else {
+        value += amountValue;
+      }
     }
 
     float min = 5.f;
