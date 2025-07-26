@@ -143,8 +143,6 @@ struct ExponentialParameter {
   auto scaleValue(float valueIn) {
     return powf(valueIn, exponent) * (max - min) + min;
   }
-
-  //auto unscaleValue(float)
 };
 
 struct OverdriveParameter {

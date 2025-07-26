@@ -42,7 +42,6 @@ struct SDSState {
 
   StepsParameter stepCount;
   RawParameter volumeEnvelope;
-  //RawParameter pitchEnvelope;
   RawParameter cutoffEnvelope;
 
   RawParameter skips;
@@ -51,7 +50,6 @@ struct SDSState {
   RawParameter cutoffAmount;
 
   AlgorithmParameter algorithm;
-  //OverdriveParameter drive;
   RawParameter drive;
   EvolveParameter evolve;
   ScaleParameter scale;
@@ -75,11 +73,9 @@ struct SDSState {
 
       stepCount{0},
       volumeEnvelope{0},
-      //pitchEnvelope{0.5f},
       cutoffEnvelope{0},
 
       algorithm{0},
-      //drive{0.5},
       evolve{0},
       scale{0},
       resonance{0},

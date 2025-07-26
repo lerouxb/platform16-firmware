@@ -24,8 +24,6 @@ class DecayEnvelope {
     // decayTime is in seconds
     decayTime = decayTimeIn;
     decayRate = 1.0f - expf(-1.0f / (sampleRate * decayTime));
-
-    //printf("%.2f, %.10f\n", decayTime, decayRate);
   }
 
   float process() {

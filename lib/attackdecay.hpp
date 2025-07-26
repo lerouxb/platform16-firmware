@@ -53,18 +53,6 @@ class AttackDecayEnvelope {
       time = safeAttackDecayTime(powf(value, 2.f) * 20.0f);
     }
 
-    /*
-1/Math.pow(2, 16) = 0.0000152587890625
-Math.log(0.0000152587890625) = -11.090354888959125
-Math.log(0.0000152587890625*2) = -10.39720770839918
-Math.log(1) = 0
-
-so Math.log(end) - Math.log(start) is about -10.5ish
-
-    */
-
-    ///coeff = 1.0f + (logf(0.0001f)) /
-    //      (time * sampleRate + 1);
     coeff = 1.f + (-10.5f / (time * sampleRate + 1.f));
   }
 

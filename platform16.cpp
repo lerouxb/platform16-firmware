@@ -135,9 +135,7 @@ int main() {
         bootButtonState = getBootButton();
       }
       bootButton.update(bootButtonState);
-      //printf("%d, %d, %d\n", bootButtonState, bootButton.isDown, bootButton.isPressed);
       float sample = instrument.process();
-      //bootButtonState = true;
       int16_t sampleInt = (int16_t)(sample * 32767.f);
       samples[i * 2] = sampleInt;
       samples[i * 2 + 1] = sampleInt;
@@ -155,9 +153,6 @@ int main() {
       // last second because they were all full. ie. roughly how much of each
       // second we have "spare"
       printf("%.2fms\n", total/1000.f);
-      //printf("%.2f\n", instrument.getState()->shape.value);
-      //printf("%.2f\n", instrument.getState()->filterResonance.getScaled());
-      //printf("%d\n", instrument.getState()->shape.getScaled());
       // TODO: should we somehow take into account the remainder?
       total = 0;
       tickStart = end; 

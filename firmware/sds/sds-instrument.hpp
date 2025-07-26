@@ -177,7 +177,6 @@ struct SDSInstrument {
       cachedRawPitch{0},
       lastPlayedPitchAmount{0},
       lastPlayedFilterAmount{0},
-      lastPlayedVolumeAmount{0},
       previousAlgorithm{0},
       previousClockState{false},
       previousScale{0},
@@ -189,17 +188,13 @@ struct SDSInstrument {
     sampleRate = sampleRateIn;
     oscillator.init(sampleRate);
     oscillator.setAmp(1.f);
-    //oscillator.setWaveform(Oscillator::WAVE_SAW);
-    //oscillator.setWaveform(Oscillator::WAVE_POLYBLEP_SQUARE);
     oscillator.setWaveform(Oscillator::WAVE_POLYBLEP_SAW);
     clock.init(getTickFrequency(), sampleRate);
 
     volumeEnvelope.init(sampleRate);
-    //pitchEnvelope.init(sampleRate);
     cutoffEnvelope.init(sampleRate);
 
     filter.init(sampleRate);
-    // filter.SetDrive(0.8);
 
     randomizeSequence();
   }
@@ -263,10 +258,6 @@ struct SDSInstrument {
 
   float getVolume() {
     float value = state.volume.getScaled();
-
-    value += state.volumeAmount.getScaled() * lastPlayedVolumeAmount;
-
-    //value = fclamp(value, 0.f, 1.f);
     
     // 3^2 = 9 so this can be come bigger than "unity" but because of filters
     // and decays and so on that's kinda reasonable. If we restrict it to 1,
@@ -372,30 +363,6 @@ struct SDSInstrument {
   }
 
   float getFilterCutoff() {
-    /*
-    float value = state.cutoff.value;
-
-    value += state.cutoffAmount.value * lastPlayedFilterAmount;
-    value = fclamp(value, 0.f, 1.f);
-
-    float max = HALF_SAMPLE_RATE;
-    float min = 5.f;
-    value = powf(value, 3.0f) * (max - min) + min;
-
-    value = fclamp(value, min, max);
-
-    return value;
-    */
-
-    // scale the cutoff by the pitch amount so that it tracks the pitch
-    // ie. no pitch amount (the root note) means no cutoff change, but some
-    // pitch amount means we move the cutoff up the same amount.
-    // TODO: this doesn't account for scale quantization. 
-    // TODO: if we have the base oscillator frequency and the current one we can
-    // work out the pitch amount to use
-    //float rawPitchAmount = state.pitchAmount.value * lastPlayedPitchAmount;
-    //float value = state.cutoff.scaleValue(state.cutoff.value * (1.f + rawPitchAmount));
-    
     // I just prefer when the cutoff does not track the pitch. If you track the
     // pitch, then pitch dominates the sequence. If you don't, then filter
     // cutoff tends to dominate. And this isn't really so much a pitch
@@ -406,7 +373,6 @@ struct SDSInstrument {
     // Apply a curve to the cutoff amount so it starts to make a difference
     // without having to turn the knob all the way up.
     float rawFilterAmount = powf(state.cutoffAmount.value * lastPlayedFilterAmount, 0.5f);
-    //float rawFilterAmount = state.cutoffAmount.value * lastPlayedFilterAmount;
     value += state.cutoff.scaleValue(rawFilterAmount);
 
     float min = 5.f;
@@ -681,7 +647,6 @@ struct SDSInstrument {
       state.pitchAmounts[i] = randomProb();
       state.pitchAmountsBackup[i] = state.pitchAmounts[i];
       state.filterAmounts[i] = randomProb();
-      state.volumeAmounts[i] = randomProb();
     }
 
     if (state.stepCount.getScaled() != 0) {
@@ -690,14 +655,6 @@ struct SDSInstrument {
     }
 
     sortByAlgorithm();
-
-    // TODO: space out the skips?
-
-
-    // for (int i=0; i < 32; i++) {
-    //   printf("%.2f ", state.amounts[i]);
-    // }
-    // printf("\n");
   }
 
   float processOverdrive(float sample, float amount, float volume) {
@@ -792,12 +749,10 @@ struct SDSInstrument {
 
     // 0 to 1
     float volumeEnv = state.volumeEnvelope.getScaled();
-    //float pitchEnv = state.pitchEnvelope.getScaled();
     float cutoffEnv = state.cutoffEnvelope.getScaled();
 
     // doing this before we might trigger the envelopes to make sure that the initial direction is set properly
     volumeEnvelope.setTimeAndDirection(volumeEnv);
-    //pitchEnvelope.setTimeAndDirection(pitchEnv);
     cutoffEnvelope.setTimeAndDirection(cutoffEnv);
 
     if (isClockTick()) {
@@ -825,9 +780,7 @@ struct SDSInstrument {
         playedPitchChanged = true;
         lastPlayedPitchAmount = state.pitchAmounts[state.step];
         lastPlayedFilterAmount = state.filterAmounts[state.step];
-        lastPlayedVolumeAmount = state.volumeAmounts[state.step];
 
-        // printf("%.2f\n", sampleRate);
         float evolve = state.evolve.getScaled();
         float evolveAbs = fabs(state.evolve.getScaled());
         // add a dead zone around the middle of the knob,
@@ -837,15 +790,12 @@ struct SDSInstrument {
         if (evolveAbs > 0.1f && evolveAbs/4.f > randomProb()) {
           evolved = true;
           if (evolve > 0.f) {
-            state.volumeAmounts[state.step] = randomProb();
             state.filterAmounts[state.step] = randomProb();
             // change the backup, because we're going to sort by algorithm
             state.pitchAmountsBackup[state.step] = randomProb();
-            //printf("evolve amount %d %.2f\n", state.step, state.amounts[state.step]);
           }
           else {
             state.steps[state.step] = randomProb();
-            //printf("evolve step %d %.2f\n", state.step, state.steps[state.step]);
           }
 
           if (state.stepCount.getScaled() != 0) {
@@ -864,7 +814,6 @@ struct SDSInstrument {
         }
 
         volumeEnvelope.trigger();
-        //pitchEnvelope.trigger();
         cutoffEnvelope.trigger();
       }
 
@@ -884,8 +833,6 @@ struct SDSInstrument {
 
     // oscillator (if not stopped)
     float frequency = getOscillatorFrequency();// * maybeAttackDecay(pitchEnv, pitchEnvelope.process());
-    //printf("frequency: %.2f\n", frequency);
-    //if (state.scale.getScaled() || frequency > 28.f) {
     if (frequency > 28.f) {
       oscillator.setFreq(frequency);
       sample = oscillator.process(); // -0.5 to 0.5
@@ -893,7 +840,6 @@ struct SDSInstrument {
 
     // noise
     float noise = (randomProb() * 2.f - 1.f) * state.noise.getScaled();
-    //printf("noise: %.2f\n", noise);
     sample += noise;
 
     // filter
@@ -903,7 +849,6 @@ struct SDSInstrument {
 
 
     // overdrive
-    //sample = softClip(sample * state.drive.getPreGain()) * state.drive.getPostGain();
     // why 0.35? because I just measured the likely min/max value. Just applying
     // this so that overdrive doesn't increase the volume too much.
     sample = processOverdrive(sample, state.drive.getScaled(), 0.35f);
@@ -912,7 +857,6 @@ struct SDSInstrument {
     maxSample = std::max(maxSample, sample);
 
     // volume
-    // sample = sample * state.volume.getScaled();
     sample = sample * getVolume() * maybeAttackDecay(volumeEnv, volumeEnvelope.process());
 
 
@@ -922,7 +866,6 @@ struct SDSInstrument {
     // we're in a step we cache the raw pitch value
 
     sample = softClip(sample);
-    //sample = fclamp(sample, -1.f, 1.f);
     
     return sample;
   }
@@ -943,7 +886,6 @@ struct SDSInstrument {
   // TODO: also cache the filter, pitch and volume?
   float lastPlayedPitchAmount;
   float lastPlayedFilterAmount;
-  float lastPlayedVolumeAmount;
   int previousAlgorithm;
   bool previousClockState;
   int previousScale;
@@ -952,7 +894,6 @@ struct SDSInstrument {
   SDSController controller;
   Metro clock;
   AttackDecayEnvelope volumeEnvelope;
-  //AttackDecayEnvelope pitchEnvelope;
   AttackDecayEnvelope cutoffEnvelope;
   Oscillator oscillator;
   LadderFilter filter;

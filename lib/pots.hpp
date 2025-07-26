@@ -85,12 +85,9 @@ struct Pots {
   }
 
   void process() {
-    //sleep_ms(1);
-
     // read twice then average
     uint16_t resultInt = adc_read() + adc_read();
     // 8191 = 2 * 4096 (12 bits) - 1
-    //float result = 1 - (static_cast<float>(resultInt) / 8191.f);
     float result = static_cast<float>(resultInt) / 8191.f;
     if (fabs(result - targetValues[nextPot]) > tinyAmount) {
       // only change if it is a significant difference
