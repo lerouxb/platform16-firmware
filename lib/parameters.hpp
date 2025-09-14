@@ -178,6 +178,53 @@ struct ExponentialParameter {
   }
 };
 
+// stores a value between 0 and 1, but scales it between min and max,
+// exponentially.
+// so 0 becomes min and 1 becomes max, scaled exponentially
+template<float min, float max, float exponent, float deadZone>
+struct DeadzoneExponentialParameter {
+  float value;
+  float scaled;
+
+  DeadzoneExponentialParameter(): value{0} {
+    setScaled(0.f);
+  };
+
+  DeadzoneExponentialParameter(float valueIn): value{0} {
+    setScaled(valueIn);
+  };
+
+  void setValue(float valueIn) {
+    if (valueIn < deadZone) {
+      value = 0.f;
+      scaled = _getScaled();
+      return;
+    }
+
+    value = fclamp((valueIn-deadZone) / (1.f-deadZone), 0.f, 1.f);
+    scaled = _getScaled();
+  }
+
+  auto _getScaled() {
+    return scaleValue(value);
+  }
+
+  auto getScaled() {
+    return scaled;
+  }
+
+  void setScaled(float input) {
+    float cappedInput = fclamp(input, min, max);
+    value = powf(cappedInput - min, 1.f / exponent);
+    scaled = input;
+  }
+
+  // useful in case you have to scale a separate amount using the same min, max, exponent values
+  auto scaleValue(float valueIn) {
+    return powf(valueIn, exponent) * (max - min) + min;
+  }
+};
+
 struct OverdriveParameter {
   float value;
   float pre_gain;

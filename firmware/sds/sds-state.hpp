@@ -30,7 +30,7 @@ using FrequencyParameter = ExponentialParameter<27.5f, 1000.f, 2.0f>;
 //using AttackDecayParameter = FloatRangeParameter<-1.f, 1.f>;
 //using EvolveParameter = FloatRangeParameter<-1.f, 1.f>;
 
-using NoiseParameter = ExponentialParameter<0.f, 1.f, 0.75f>;
+using NoiseParameter = DeadzoneExponentialParameter<0.f, 1.f, 0.1f, 0.05f>;
 
 
 struct SDSState {

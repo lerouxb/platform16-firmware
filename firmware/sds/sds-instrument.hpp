@@ -183,6 +183,8 @@ struct SDSInstrument {
       previousAlgorithm{0},
       previousClockState{false},
       previousScale{0},
+      lastNoise{0.f},
+      noiseSteps{0},
       minSample{0},
       maxSample{0}
       {};
@@ -278,10 +280,11 @@ struct SDSInstrument {
 
     int scale = state.scale.getScaled();
 
-    float rawValue = playedPitchChanged || !scale ? state.pitch.getScaled() : cachedRawPitch;
     // if the pitch is not quantized, then the pitch always changes, otherwise
     // only when we get to a played step
-    playedPitchChanged = scale ? false : true;
+    playedPitchChanged = scale ? playedPitchChanged : true;
+
+    float rawValue = playedPitchChanged || !scale || !cachedRawPitch ? state.pitch.getScaled() : cachedRawPitch;
     cachedRawPitch = rawValue;
 
     float note = 76.f * rawValue;
@@ -863,8 +866,14 @@ struct SDSInstrument {
     }
 
     // noise
-    float noise = (randomProb() * 2.f - 1.f) * state.noise.getScaled();
-    sample += noise;
+    if (state.noise.value > 0.f) {
+      noiseSteps++;
+      if (noiseSteps >= (int) ((1.f - state.noise.getScaled()) * 1000.f)) {
+        noiseSteps = 0;
+        lastNoise = (randomProb() * 2.f - 1.f) * state.noise.getScaled();
+      } 
+      sample += lastNoise;
+    }
 
     // filter
     float filterCutoff = getFilterCutoff();
@@ -927,6 +936,8 @@ struct SDSInstrument {
   int previousAlgorithm;
   bool previousClockState;
   int previousScale;
+  float lastNoise;
+  int noiseSteps;
   ButtonInput& bootButton;
   SDSState state;
   SDSController controller;
