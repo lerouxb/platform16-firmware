@@ -32,6 +32,39 @@ struct RawParameter {
   }
 };
 
+template<float deadZone>
+struct BipolarParameter {
+  float value;
+  float halfDeadZone = deadZone / 2.f;
+
+  BipolarParameter() {
+    setScaled(0);
+  };
+  BipolarParameter(float value) : value(0) {
+    setScaled(value);
+  };
+
+  void setValue(float valueIn) {
+    if (valueIn > (0.5f-halfDeadZone) && valueIn < (0.5f+halfDeadZone)) {
+      value = 0.f;
+    } else if (value < 0.5f) {
+      // -1 to 0
+      value = -(1.f - valueIn / (0.5f - halfDeadZone));
+    } else {
+      // 0 to 1
+      value = (valueIn - (0.5f + halfDeadZone)) / (0.5f - halfDeadZone);
+    }
+  }
+
+  auto getScaled() {
+    return value;
+  }
+
+  void setScaled(float input) {
+    setValue(input);
+  }
+};
+
 // stores a value between 0 and 1, but scales it to a value between min and max,
 // linearly.
 // so 0 becomes min and 1 becomes max. rounds to the nearest integer

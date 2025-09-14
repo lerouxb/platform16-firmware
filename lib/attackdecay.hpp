@@ -42,10 +42,10 @@ class AttackDecayEnvelope {
 
     // direction -1 is decay, 1 is attack
     // left of center is attack, right of center is decay
-    direction = (valueIn >= 0.5f) ? -1 : 1;
-    float value = (valueIn >= 0.5f) ? 1.f - ((valueIn - 0.5f) * 2.f) : 1.f - (valueIn * 2.f);
+    direction = (valueIn >= 0.f) ? -1 : 1;
+    float value = valueIn >= 0.f ? 1.f - valueIn : fabs(valueIn);
     // time is in seconds, 10 seconds max
-    if (direction > 0) {
+    if (direction > 0.f) {
       // attack
       time = safeAttackDecayTime(powf(value, 6.f) * 20.0f);
     } else {

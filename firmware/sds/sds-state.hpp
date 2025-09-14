@@ -21,14 +21,14 @@ using StepsParameter = IntegerRangeParameter<0, 31>;
 //using DestinationParameter = IntegerRangeParameter<0, 2>;
 using ScaleParameter = IntegerRangeParameter<0, 6>;
 
-using AlgorithmParameter = IntegerRangeParameter<0, 12>;
+using AlgorithmParameter = IntegerRangeParameter<0, 8>;
 
 //using FrequencyParameter = ExponentialParameter<27.5f, 1000.f, 2.0f>;
 using FrequencyParameter = ExponentialParameter<27.5f, 1000.f, 2.0f>;
 //using CutoffParameter = ExponentialParameter<5.f, HALF_SAMPLE_RATE, 3.f>;
 //using AttackDecayParameter = ExponentialParameter<-10.f, 10.f, 3.f>;
 //using AttackDecayParameter = FloatRangeParameter<-1.f, 1.f>;
-using EvolveParameter = FloatRangeParameter<-1.f, 1.f>;
+//using EvolveParameter = FloatRangeParameter<-1.f, 1.f>;
 
 using NoiseParameter = ExponentialParameter<0.f, 1.f, 0.75f>;
 
@@ -37,22 +37,20 @@ struct SDSState {
   BPMParameter bpm;
   RawParameter volume;
   RawParameter pitch;
-  //CutoffParameter cutoff;
-  RawParameter cutoff;
+  BipolarParameter<0.05f> cutoff;
   NoiseParameter noise;
 
   StepsParameter stepCount;
-  RawParameter volumeEnvelope;
-  RawParameter cutoffEnvelope;
+  BipolarParameter<0.05f> volumeEnvelope;
+  BipolarParameter<0.05f> cutoffEnvelope;
 
   RawParameter skips;
-  RawParameter volumeAmount;
-  RawParameter pitchAmount;
-  RawParameter cutoffAmount;
+  BipolarParameter<0.05f> pitchAmount;
+  BipolarParameter<0.05f> cutoffAmount;
 
   AlgorithmParameter algorithm;
   RawParameter drive;
-  EvolveParameter evolve;
+  BipolarParameter<0.05f> evolve;
   ScaleParameter scale;
   RawParameter resonance;
 
@@ -61,7 +59,7 @@ struct SDSState {
   // amounts are the amount of modulation for each step
   std::array<float, 32> pitchAmounts;
   std::array<float, 32> filterAmounts;
-  std::array<float, 32> volumeAmounts;
+  //std::array<float, 32> volumeAmounts;
   // keep a backup so we can sort them by algorithm, yet go back to the original random order
   std::array<float, 32> pitchAmountsBackup;  
 
@@ -69,7 +67,6 @@ struct SDSState {
     : bpm{120.f},
       volume{0},
       pitch{0},
-      //cutoff{16000},
       cutoff{0},
       noise{0},
 
@@ -83,7 +80,7 @@ struct SDSState {
       resonance{0},
 
       skips{0},
-      volumeAmount{0},
+      //volumeAmount{0},
       pitchAmount{0},
       cutoffAmount{0},
       
@@ -92,7 +89,7 @@ struct SDSState {
       steps[i] = 0.f;
       pitchAmounts[i] = 0.f;
       filterAmounts[i] = 0.f;
-      volumeAmounts[i] = 0.f;
+      //volumeAmounts[i] = 0.f;
       pitchAmountsBackup[i] = 0.f;
     }
   }

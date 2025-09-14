@@ -25,8 +25,8 @@ struct SDSController {
     state.pitchAmount.setValue(pots.getInterpolatedValue(K15));
     state.cutoffAmount.setValue(pots.getInterpolatedValue(K16));
 
-    state.algorithm.setValue(pots.getInterpolatedValue(K5));
-    state.evolve.setValue(pots.getInterpolatedValue(K13));
+    state.algorithm.setValue(pots.getInterpolatedValue(K13));
+    state.evolve.setValue(pots.getInterpolatedValue(K5));
     state.scale.setValue(pots.getInterpolatedValue(K10));
     state.resonance.setValue(pots.getInterpolatedValue(K11));
   }

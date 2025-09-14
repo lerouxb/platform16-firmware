@@ -27,19 +27,25 @@
 #define SCALE_PENTATONIC_MINOR 6
 // maybe the blues scale?
 
+// This is kinda a balance - I don't want too many algorithms because the
+// labelling becomes very busy. I figure ramps are the first to go because you
+// can just use the first half of a corresponding triangle.
+// This could also be replaced with actual arpeggios, but those work better with
+// more controls like length and which chord to use and so on, kinda clashing
+// with sequence length and scale.
 #define ALGORITHM_NONE 0
-#define ALGORITHM_RAMP_UP 1
-#define ALGORITHM_RAMP_DOWN 2
-#define ALGORITHM_TRANGLE_UP 3
-#define ALGORITHM_TRIANGLE_DOWN 4
-#define ALGORITHM_TWO_TRIANGLES_UP 5
-#define ALGORITHM_TWO_TRIANGLES_DOWN 6
-#define ALGORITHM_FOUR_TRIANGLES_UP 7
-#define ALGORITHM_FOUR_TRIANGLES_DOWN 8
-#define ALGORITHM_RAMP_UP_DOWN 9
-#define ALGORITHM_RAMP_DOWN_UP 10
-#define ALGORITHM_TRIANGLE_UP_DOWN 11
-#define ALGORITHM_TRIANGLE_DOWN_UP 12
+//#define ALGORITHM_RAMP_UP 1
+//#define ALGORITHM_RAMP_DOWN 2
+#define ALGORITHM_TRIANGLE_UP 1
+#define ALGORITHM_TRIANGLE_DOWN 2
+#define ALGORITHM_TWO_TRIANGLES_UP 3
+#define ALGORITHM_TWO_TRIANGLES_DOWN 4
+#define ALGORITHM_FOUR_TRIANGLES_UP 5
+#define ALGORITHM_FOUR_TRIANGLES_DOWN 6
+//#define ALGORITHM_RAMP_UP_DOWN 7
+//#define ALGORITHM_RAMP_DOWN_UP 8
+#define ALGORITHM_TRIANGLE_UP_DOWN 7
+#define ALGORITHM_TRIANGLE_DOWN_UP 8
 
 namespace platform {
 
@@ -290,7 +296,7 @@ struct SDSInstrument {
 
     // scale up up to 1 octave
     // TODO: 2 might be nice?
-    float normalisedValue = state.pitchAmount.value < 0.5f ? (0.5f - state.pitchAmount.value) * 2.f : (state.pitchAmount.value - 0.5f) * 2.f;
+    float normalisedValue = fabs(state.pitchAmount.value);
     float rawAmount = normalisedValue * lastPlayedPitchAmount;
 
     if (scale) {
@@ -345,7 +351,7 @@ struct SDSInstrument {
       }
 
       int offset = (int)(rawAmount * numScaleNotes);
-      int newNoteIndex = (state.pitchAmount.value < 0.5f) ? noteIndex - scaleNotes[offset] : noteIndex + scaleNotes[offset];
+      int newNoteIndex = (state.pitchAmount.value < 0.f) ? noteIndex - scaleNotes[offset] : noteIndex + scaleNotes[offset];
 
       // clamp it just in case
       if (newNoteIndex < 0) {
@@ -360,7 +366,7 @@ struct SDSInstrument {
       if (scale != previousScale) {
         printf("scale changed to unquantized\n");
       }
-      if (state.pitchAmount.value >= 0.5f) {
+      if (state.pitchAmount.value >= 0.f) {
         // increasing pitch
         value += value * rawAmount;
       } else {
@@ -379,29 +385,21 @@ struct SDSInstrument {
     // All the way counter clockwise is low pass 5Hz. The middle is lowpass
     // HALF_SAMPLE_RATE or high pass 5Hz. All the way clockwise is highpass
     // HALF_SAMPLE_RATE.
-    float cutoffValue = state.cutoff.value < 0.5f ? state.cutoff.value * 2.f : (state.cutoff.value - 0.5f) * 2.f;
+    float cutoffValue = state.cutoff.value <= 0.f ? 1.f + state.cutoff.value : state.cutoff.value;
     float value = powf(cutoffValue, 3.f) * (HALF_SAMPLE_RATE - 5.f) + 5.f;
 
-    float normalisedValue = state.cutoffAmount.value < 0.5f ? (0.5f - state.cutoffAmount.value) * 2.f : (state.cutoffAmount.value - 0.5f) * 2.f;
+    float normalisedValue = fabs(state.cutoffAmount.value);
     float rawFilterAmount = powf(normalisedValue * lastPlayedFilterAmount, 0.5f);
     float amountValue = powf(rawFilterAmount, 3.f) * (HALF_SAMPLE_RATE - 5.f) + 5.f;
 
     // when in lowpass mode, amount moves the filter up, allowing more frequencies through.
     // when in highpass mode, amount moves the filter down, allowing more frequencies through.
-    if (state.cutoff.value < 0.5f) {
+    if (state.cutoff.value <= 0.f) {
       // low pass: add when increasing
-      if (state.cutoffAmount.value >= 0.5f) {
-        value += amountValue;
-      } else {
-        value -= amountValue;
-      }
+      value += (state.cutoffAmount.value <= 0.f ? -amountValue : amountValue);
     } else {
       // high pass: subtract when increasing
-      if (state.cutoffAmount.value >= 0.5f) {
-        value -= amountValue;
-      } else {
-        value += amountValue;
-      }
+      value -= (state.cutoffAmount.value <= 0.f ? -amountValue : amountValue);
     }
 
     float min = 5.f;
@@ -427,20 +425,22 @@ struct SDSInstrument {
       case ALGORITHM_NONE:
         break;
 
+      /*
       case ALGORITHM_RAMP_UP: {
-        // 1. ramp up
+        // ramp up
         std::sort(std::begin(state.pitchAmounts), std::end(state.pitchAmounts));
         break;
       }
 
       case ALGORITHM_RAMP_DOWN: {
-        // 2. ramp down
+        // ramp down
         std::sort(std::begin(state.pitchAmounts), std::end(state.pitchAmounts), std::greater{});
         break;
       }
+      */
 
-      case ALGORITHM_TRANGLE_UP: {
-        // 3. triangle up
+      case ALGORITHM_TRIANGLE_UP: {
+        // triangle up
         std::partial_sort(std::begin(state.pitchAmounts),
                           std::begin(state.pitchAmounts) + 16,
                           std::begin(state.pitchAmounts) + 16,
@@ -453,7 +453,7 @@ struct SDSInstrument {
       }
 
       case ALGORITHM_TRIANGLE_DOWN: {
-        // 4. triangle down
+        // triangle down
         std::partial_sort(std::begin(state.pitchAmounts),
                           std::begin(state.pitchAmounts) + 16,
                           std::begin(state.pitchAmounts) + 16,
@@ -466,7 +466,7 @@ struct SDSInstrument {
       }
 
       case ALGORITHM_TWO_TRIANGLES_UP: {
-        // 5. two triangles up
+        // two triangles up
         std::partial_sort(std::begin(state.pitchAmounts),
                           std::begin(state.pitchAmounts) + 8,
                           std::begin(state.pitchAmounts) + 8,
@@ -487,7 +487,7 @@ struct SDSInstrument {
       }
 
       case ALGORITHM_TWO_TRIANGLES_DOWN: {
-        // 6. two triangles down
+        // two triangles down
         std::partial_sort(std::begin(state.pitchAmounts),
                           std::begin(state.pitchAmounts) + 8,
                           std::begin(state.pitchAmounts) + 8,
@@ -508,7 +508,7 @@ struct SDSInstrument {
       }
 
       case ALGORITHM_FOUR_TRIANGLES_UP: {
-        // 7. four triangles up
+        // four triangles up
         std::partial_sort(std::begin(state.pitchAmounts),
                           std::begin(state.pitchAmounts) + 4,
                           std::begin(state.pitchAmounts) + 4,
@@ -545,7 +545,7 @@ struct SDSInstrument {
       }
 
       case ALGORITHM_FOUR_TRIANGLES_DOWN: {
-        // 8. four triangles down
+        // four triangles down
         std::partial_sort(std::begin(state.pitchAmounts),
                           std::begin(state.pitchAmounts) + 4,
                           std::begin(state.pitchAmounts) + 4,
@@ -581,8 +581,9 @@ struct SDSInstrument {
         break;
       }
 
+      /*
       case ALGORITHM_RAMP_UP_DOWN: {
-        // 9. ramp up down
+        // ramp up down
         float sorted[32];
         std::copy(
           std::begin(state.pitchAmountsBackup), std::end(state.pitchAmountsBackup), std::begin(sorted));
@@ -600,7 +601,7 @@ struct SDSInstrument {
 
 
       case ALGORITHM_RAMP_DOWN_UP: {
-        // 10. ramp down up
+        // ramp down up
         float sorted[32];
         std::copy(
           std::begin(state.pitchAmountsBackup), std::end(state.pitchAmountsBackup), std::begin(sorted));
@@ -615,9 +616,10 @@ struct SDSInstrument {
         }
         break;
       }
+      */
 
       case ALGORITHM_TRIANGLE_UP_DOWN: {
-        // 11. triangle up down
+        // triangle up down
         float sorted[32];
         std::copy(
           std::begin(state.pitchAmountsBackup), std::end(state.pitchAmountsBackup), std::begin(sorted));
@@ -643,7 +645,7 @@ struct SDSInstrument {
 
 
       case ALGORITHM_TRIANGLE_DOWN_UP: {
-        // 12. triangle down up
+        // triangle down up
         float sorted[32];
         std::copy(
           std::begin(state.pitchAmountsBackup), std::end(state.pitchAmountsBackup), std::begin(sorted));
@@ -771,9 +773,9 @@ struct SDSInstrument {
   float process() {
     uint stepCount = state.stepCount.getScaled();
 
-    // 0 to 1
-    float volumeEnv = state.volumeEnvelope.getScaled();
-    float cutoffEnv = state.cutoffEnvelope.getScaled();
+    // -1 to 1
+    float volumeEnv = state.volumeEnvelope.value;
+    float cutoffEnv = state.cutoffEnvelope.value;
 
     // doing this before we might trigger the envelopes to make sure that the initial direction is set properly
     volumeEnvelope.setTimeAndDirection(volumeEnv);
@@ -804,13 +806,12 @@ struct SDSInstrument {
         lastPlayedPitchAmount = state.pitchAmounts[state.step];
         lastPlayedFilterAmount = state.filterAmounts[state.step];
 
-        float evolve = state.evolve.getScaled();
-        float evolveAbs = fabs(state.evolve.getScaled());
-        // add a dead zone around the middle of the knob,
+        float evolve = state.evolve.value;
+        float evolveAbs = fabs(evolve);
         // only evolve if the random probability is greater than the current
         // absolute evolve value
         bool evolved = false;
-        if (evolveAbs > 0.1f && evolveAbs/4.f > randomProb()) {
+        if (evolveAbs/4.f > randomProb()) {
           evolved = true;
           if (evolve > 0.f) {
             state.filterAmounts[state.step] = randomProb();
@@ -869,11 +870,11 @@ struct SDSInstrument {
     float filterCutoff = getFilterCutoff();
     // when in lowpass mode, the envelope closes the filter towards 5Hz.
     // when in highpass mode, the envelope closes the filter towards HALF_SAMPLE_RATE.
-    float cutoff = state.cutoff.value < 0.5f
+    float cutoff = state.cutoff.value <= 0.f
       ? filterCutoff * maybeAttackDecay(cutoffEnv, cutoffEnvelope.process())
       : filterCutoff + ((HALF_SAMPLE_RATE - filterCutoff) * (1.f - maybeAttackDecay(cutoffEnv, cutoffEnvelope.process())));
 
-    if (state.cutoff.value < 0.5f) {
+    if (state.cutoff.value <= 0.f) {
       // low pass
       filter.setFilterMode(LadderFilter::FilterMode::LP24);
     } else {
