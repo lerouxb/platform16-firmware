@@ -299,9 +299,7 @@ struct SDSInstrument {
     return value;
   }
 
-  float _getOffsetForNote(int scale, float note, float frequency, float amount, bool enableLogging) {
-    int noteIndex = (int)note;
-
+  float _getSemitoneOffsetForNote(int scale, float amount, bool enableLogging) {
     if (scale) {
       int* scaleNotes;
       int numScaleNotes;
@@ -356,6 +354,16 @@ struct SDSInstrument {
 
       // TODO: we should round so you can get a full octave up or down
       int offset = (int)(fabs(amount) * numScaleNotes);
+
+      if (enableLogging) {
+        printf("offset: %d\n", offset);
+      }
+
+      if (amount < 0.f) {
+        return -scaleNotes[offset];
+      }
+      return scaleNotes[offset];
+      /*
       int newNoteIndex = (amount < 0.f) ? noteIndex - scaleNotes[offset] : noteIndex + scaleNotes[offset];
 
       // clamp it just in case
@@ -365,20 +373,23 @@ struct SDSInstrument {
       if (newNoteIndex > 87) {
         newNoteIndex = 87;
       }
+      */
 
-      if (enableLogging) {
-        printf("noteIndex: %d, newNoteIndex: %d, offset: %d\n", noteIndex, newNoteIndex, offset);
-      }
 
-      return notes[newNoteIndex] - notes[noteIndex];
+      //return notes[newNoteIndex] - notes[noteIndex];
     } else {
 
       if (enableLogging && scale != previousScale) {
         printf("scale changed to unquantized\n");
       }
-      float factor = amount > 0.f ? amount : 0.5f + (amount * 0.5f);
-      return frequency * factor;
+      //float factor = amount > 0.f ? amount : 0.5f + (amount * 0.5f);
+      //return frequency * factor;
+      return amount * 12.f;
     }
+  }
+
+  float _addSemitonesToFrequency(float frequency, float semitones) {
+    return frequency * powf(2.f, semitones/12.f);
   }
 
   float getOscillatorFrequency() {
@@ -391,24 +402,43 @@ struct SDSInstrument {
 
     float rawOffsetValue = playedPitchChanged || !scale || !cachedRawPitchOffset ? state.pitchOffset.getScaled() : cachedRawPitchOffset;
     cachedRawPitchOffset = rawOffsetValue;
-    float pitchOffset = _getOffsetForNote(scale, note, baseFrequency, rawOffsetValue, playedPitchChanged && scale);
+    float pitchOffsetSemitones = _getSemitoneOffsetForNote(scale, rawOffsetValue, playedPitchChanged && scale);
     if (playedPitchChanged && scale) {
-      printf("scale: %d, note: %f, baseFrequency: %f, rawOffsetValue: %f, pitchOffset: %f\n", scale, note, baseFrequency, rawOffsetValue, pitchOffset);
+      printf("scale: %d, note: %f, baseFrequency: %f, rawOffsetValue: %f, pitchOffsetSemitones: %f\n", scale, note, baseFrequency, rawOffsetValue, pitchOffsetSemitones);
     }
 
     // scale up up to 1 octave
     // TODO: 2 might be nice?
     float rawAmount = state.pitchAmount.value * lastPlayedPitchAmount;
-    float pitchAmountOffset = _getOffsetForNote(scale, note, baseFrequency, rawAmount, playedPitchChanged && scale);
+    // TODO: This actually has to respond to the new transposed pitch, not the root note
+    float pitchAmountOffsetSemitones = _getSemitoneOffsetForNote(scale, rawAmount, playedPitchChanged && scale);
 
-    float value = baseFrequency + pitchOffset + pitchAmountOffset;
-    // clamp it just in case
-    value = fclamp(value, 0.f, 22050.f); 
+    float value;
+    if (scale) {
+      int newNote = note + pitchOffsetSemitones + pitchAmountOffsetSemitones;
+
+      // clamp it just in case
+      if (newNote < 0) {
+        newNote = 0;
+      } else if (newNote > 87) {
+        newNote = 87;
+      }
+
+      value = notes[newNote];
+
+    } else {
+      value = _addSemitonesToFrequency(baseFrequency, pitchOffsetSemitones);
+      value = _addSemitonesToFrequency(value, pitchAmountOffsetSemitones);
+
+      // clamp it just in case
+      value = fclamp(value, 0.f, 22050.f); 
+    }
 
     if (playedPitchChanged) {
       playedPitchChanged = false;
       previousScale = scale;
     }
+
     return value;
   }
 
