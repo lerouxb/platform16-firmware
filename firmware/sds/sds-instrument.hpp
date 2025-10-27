@@ -69,12 +69,12 @@ scales
 5 pentatonic major
 6 pentatonic minor
 */
-int chromaticOffsets[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
-int majorOffsets[] = {0, 2, 4, 5, 7, 9, 11};
-int naturalMinorOffsets[] = {0, 2, 3, 5, 7, 8, 10};
-int harmonicMinorOffsets[] = {0, 2, 3, 5, 7, 8, 11};
-int pentatonicMajorOffsets[] = {0, 2, 4, 7, 9};
-int pentatonicMinorOffsets[] = {0, 3, 5, 7, 10};
+int chromaticOffsets[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+int majorOffsets[] = {0, 2, 4, 5, 7, 9, 11, 12};
+int naturalMinorOffsets[] = {0, 2, 3, 5, 7, 8, 10, 12};
+int harmonicMinorOffsets[] = {0, 2, 3, 5, 7, 8, 11, 12};
+int pentatonicMajorOffsets[] = {0, 2, 4, 7, 9, 12};
+int pentatonicMinorOffsets[] = {0, 3, 5, 7, 10, 12};
 
 // 76+12 = 88
 float notes[] = {
@@ -177,14 +177,14 @@ struct SDSInstrument {
       samplesSinceLastClockTick{0},
       externalClockFrequency{0.f},
       playedPitchChanged{true},
-      cachedRawPitch{0},
+      cachedRawBasePitch{0},
       lastPlayedPitchAmount{0},
       lastPlayedFilterAmount{0},
       previousAlgorithm{0},
       previousClockState{false},
       previousScale{0},
-      lastNoise{0.f},
-      noiseSteps{0},
+      //lastNoise{0.f},
+      //noiseSteps{0},
       minSample{0},
       maxSample{0}
       {};
@@ -275,32 +275,32 @@ struct SDSInstrument {
     return value;
   }
 
-  float getOscillatorFrequency() {
-    // TODO: the curve still needs work.
-
-    int scale = state.scale.getScaled();
-
+  float _getNote(int scale) {
     // if the pitch is not quantized, then the pitch always changes, otherwise
     // only when we get to a played step
     playedPitchChanged = scale ? playedPitchChanged : true;
 
-    float rawValue = playedPitchChanged || !scale || !cachedRawPitch ? state.pitch.getScaled() : cachedRawPitch;
-    cachedRawPitch = rawValue;
+    float rawValue = playedPitchChanged || !scale || !cachedRawBasePitch ? state.basePitch.getScaled() : cachedRawBasePitch;
+    cachedRawBasePitch = rawValue;
 
     float note = 76.f * rawValue;
+    return note;
+  }
+
+  float getFrequencyForNote(int scale, float note) {
     int noteIndex = (int)note;
     float noteFraction = note - noteIndex;
     float value = notes[noteIndex];
-
 
     if (!scale) {
       value = value + (notes[noteIndex + 1] - notes[noteIndex]) * noteFraction;
     }
 
-    // scale up up to 1 octave
-    // TODO: 2 might be nice?
-    float normalisedValue = fabs(state.pitchAmount.value);
-    float rawAmount = normalisedValue * lastPlayedPitchAmount;
+    return value;
+  }
+
+  float _getOffsetForNote(int scale, float note, float frequency, float amount, bool enableLogging) {
+    int noteIndex = (int)note;
 
     if (scale) {
       int* scaleNotes;
@@ -308,35 +308,35 @@ struct SDSInstrument {
 
       switch (scale) {
         case SCALE_MAJOR:
-          if (scale != previousScale) {
+          if (enableLogging && scale != previousScale) {
             printf("scale changed to major\n");
           }
           scaleNotes = majorOffsets;
           numScaleNotes = sizeof(majorOffsets) / sizeof(int);
           break;
         case SCALE_NATURAL_MINOR:
-          if (scale != previousScale) {
+          if (enableLogging && scale != previousScale) {
             printf("scale changed to natural minor\n");
           }
           scaleNotes = naturalMinorOffsets;
           numScaleNotes = sizeof(naturalMinorOffsets) / sizeof(int);
           break;
         case SCALE_HARMONIC_MINOR:
-          if (scale != previousScale) {
+          if (enableLogging && scale != previousScale) {
             printf("scale changed to harmonic minor\n");
           }
           scaleNotes = harmonicMinorOffsets;
           numScaleNotes = sizeof(harmonicMinorOffsets) / sizeof(int);
           break;
         case SCALE_PENTATONIC_MAJOR:
-          if (scale != previousScale) {
+          if (enableLogging && scale != previousScale) {
             printf("scale changed to pentatonic major\n");
           }
           scaleNotes = pentatonicMajorOffsets;
           numScaleNotes = sizeof(pentatonicMajorOffsets) / sizeof(int);
           break;
         case SCALE_PENTATONIC_MINOR:
-          if (scale != previousScale) {
+          if (enableLogging && scale != previousScale) {
             printf("scale changed to pentatonic minor\n");
           }
           scaleNotes = pentatonicMinorOffsets;
@@ -344,7 +344,7 @@ struct SDSInstrument {
           break;
 
         default:
-          if (scale != previousScale) {
+          if (enableLogging && scale != previousScale) {
             printf("scale changed to chromatic\n");
           }
 
@@ -353,8 +353,10 @@ struct SDSInstrument {
           break;
       }
 
-      int offset = (int)(rawAmount * numScaleNotes);
-      int newNoteIndex = (state.pitchAmount.value < 0.f) ? noteIndex - scaleNotes[offset] : noteIndex + scaleNotes[offset];
+
+      // TODO: we should round so you can get a full octave up or down
+      int offset = (int)(fabs(amount) * numScaleNotes);
+      int newNoteIndex = (amount < 0.f) ? noteIndex - scaleNotes[offset] : noteIndex + scaleNotes[offset];
 
       // clamp it just in case
       if (newNoteIndex < 0) {
@@ -364,23 +366,49 @@ struct SDSInstrument {
         newNoteIndex = 87;
       }
 
-      value = notes[newNoteIndex];
+      if (enableLogging) {
+        printf("noteIndex: %d, newNoteIndex: %d, offset: %d\n", noteIndex, newNoteIndex, offset);
+      }
+
+      return notes[newNoteIndex] - notes[noteIndex];
     } else {
-      if (scale != previousScale) {
+
+      if (enableLogging && scale != previousScale) {
         printf("scale changed to unquantized\n");
       }
-      if (state.pitchAmount.value >= 0.f) {
-        // increasing pitch
-        value += value * rawAmount;
-      } else {
-        // decreasing pitch
-        value -= value * rawAmount;
-      }
-      // clamp it just in case
-      value = fclamp(value, 0.f, 22050.f); 
+      float factor = amount > 0.f ? amount : 0.5f + (amount * 0.5f);
+      return frequency * factor;
+    }
+  }
+
+  float getOscillatorFrequency() {
+    // TODO: the curve still needs work.
+
+    int scale = state.scale.getScaled();
+    float note = _getNote(scale);
+    int noteIndex = (int)note;
+    float baseFrequency = getFrequencyForNote(scale, note);
+
+    float rawOffsetValue = playedPitchChanged || !scale || !cachedRawPitchOffset ? state.pitchOffset.getScaled() : cachedRawPitchOffset;
+    cachedRawPitchOffset = rawOffsetValue;
+    float pitchOffset = _getOffsetForNote(scale, note, baseFrequency, rawOffsetValue, playedPitchChanged && scale);
+    if (playedPitchChanged && scale) {
+      printf("scale: %d, note: %f, baseFrequency: %f, rawOffsetValue: %f, pitchOffset: %f\n", scale, note, baseFrequency, rawOffsetValue, pitchOffset);
     }
 
-    previousScale = scale;
+    // scale up up to 1 octave
+    // TODO: 2 might be nice?
+    float rawAmount = state.pitchAmount.value * lastPlayedPitchAmount;
+    float pitchAmountOffset = _getOffsetForNote(scale, note, baseFrequency, rawAmount, playedPitchChanged && scale);
+
+    float value = baseFrequency + pitchOffset + pitchAmountOffset;
+    // clamp it just in case
+    value = fclamp(value, 0.f, 22050.f); 
+
+    if (playedPitchChanged) {
+      playedPitchChanged = false;
+      previousScale = scale;
+    }
     return value;
   }
 
@@ -437,7 +465,7 @@ struct SDSInstrument {
 
       case ALGORITHM_RAMP_DOWN: {
         // ramp down
-        std::sort(std::begin(state.pitchAmounts), std::end(state.pitchAmounts), std::greater{});
+        std::sort(std::begin(state.pitchAmounts), std::end(state.pitchAmounts), std::greater<float>{});
         break;
       }
       */
@@ -447,11 +475,11 @@ struct SDSInstrument {
         std::partial_sort(std::begin(state.pitchAmounts),
                           std::begin(state.pitchAmounts) + 16,
                           std::begin(state.pitchAmounts) + 16,
-                          std::less{});
+                          std::less<float>{});
         std::partial_sort(std::begin(state.pitchAmounts) + 16,
                           std::end(state.pitchAmounts),
                           std::end(state.pitchAmounts),
-                          std::greater{});
+                          std::greater<float>{});
         break;
       }
 
@@ -460,11 +488,11 @@ struct SDSInstrument {
         std::partial_sort(std::begin(state.pitchAmounts),
                           std::begin(state.pitchAmounts) + 16,
                           std::begin(state.pitchAmounts) + 16,
-                          std::greater{});
+                          std::greater<float>{});
         std::partial_sort(std::begin(state.pitchAmounts) + 16,
                           std::end(state.pitchAmounts),
                           std::end(state.pitchAmounts),
-                          std::less{});
+                          std::less<float>{});
         break;
       }
 
@@ -473,19 +501,19 @@ struct SDSInstrument {
         std::partial_sort(std::begin(state.pitchAmounts),
                           std::begin(state.pitchAmounts) + 8,
                           std::begin(state.pitchAmounts) + 8,
-                          std::less{});
+                          std::less<float>{});
         std::partial_sort(std::begin(state.pitchAmounts) + 8,
                           std::begin(state.pitchAmounts) + 16,
                           std::begin(state.pitchAmounts) + 16,
-                          std::greater{});
+                          std::greater<float>{});
         std::partial_sort(std::begin(state.pitchAmounts) + 16,
                           std::begin(state.pitchAmounts) + 24,
                           std::begin(state.pitchAmounts) + 24,
-                          std::less{});
+                          std::less<float>{});
         std::partial_sort(std::begin(state.pitchAmounts) + 24,
                           std::end(state.pitchAmounts),
                           std::end(state.pitchAmounts),
-                          std::greater{});
+                          std::greater<float>{});
         break;
       }
 
@@ -494,19 +522,19 @@ struct SDSInstrument {
         std::partial_sort(std::begin(state.pitchAmounts),
                           std::begin(state.pitchAmounts) + 8,
                           std::begin(state.pitchAmounts) + 8,
-                          std::greater{});
+                          std::greater<float>{});
         std::partial_sort(std::begin(state.pitchAmounts) + 8,
                           std::begin(state.pitchAmounts) + 16,
                           std::begin(state.pitchAmounts) + 16,
-                          std::less{});
+                          std::less<float>{});
         std::partial_sort(std::begin(state.pitchAmounts) + 16,
                           std::begin(state.pitchAmounts) + 24,
                           std::begin(state.pitchAmounts) + 24,
-                          std::greater{});
+                          std::greater<float>{});
         std::partial_sort(std::begin(state.pitchAmounts) + 24,
                           std::end(state.pitchAmounts),
                           std::end(state.pitchAmounts),
-                          std::less{});
+                          std::less<float>{});
         break;
       }
 
@@ -515,35 +543,35 @@ struct SDSInstrument {
         std::partial_sort(std::begin(state.pitchAmounts),
                           std::begin(state.pitchAmounts) + 4,
                           std::begin(state.pitchAmounts) + 4,
-                          std::less{});
+                          std::less<float>{});
         std::partial_sort(std::begin(state.pitchAmounts) + 4,
                           std::begin(state.pitchAmounts) + 8,
                           std::begin(state.pitchAmounts) + 8,
-                          std::greater{});
+                          std::greater<float>{});
         std::partial_sort(std::begin(state.pitchAmounts) + 8,
                           std::begin(state.pitchAmounts) + 12,
                           std::begin(state.pitchAmounts) + 12,
-                          std::less{});
+                          std::less<float>{});
         std::partial_sort(std::begin(state.pitchAmounts) + 12,
                           std::begin(state.pitchAmounts) + 16,
                           std::begin(state.pitchAmounts) + 16,
-                          std::greater{});
+                          std::greater<float>{});
         std::partial_sort(std::begin(state.pitchAmounts) + 16,
                           std::begin(state.pitchAmounts) + 20,
                           std::begin(state.pitchAmounts) + 20,
-                          std::less{});
+                          std::less<float>{});
         std::partial_sort(std::begin(state.pitchAmounts) + 20,
                           std::begin(state.pitchAmounts) + 24,
                           std::begin(state.pitchAmounts) + 24,
-                          std::greater{});
+                          std::greater<float>{});
         std::partial_sort(std::begin(state.pitchAmounts) + 24,
                           std::begin(state.pitchAmounts) + 28,
                           std::begin(state.pitchAmounts) + 28,
-                          std::less{});
+                          std::less<float>{});
         std::partial_sort(std::begin(state.pitchAmounts) + 28,
                           std::end(state.pitchAmounts),
                           std::end(state.pitchAmounts),
-                          std::greater{});
+                          std::greater<float>{});
         break;
       }
 
@@ -552,35 +580,35 @@ struct SDSInstrument {
         std::partial_sort(std::begin(state.pitchAmounts),
                           std::begin(state.pitchAmounts) + 4,
                           std::begin(state.pitchAmounts) + 4,
-                          std::greater{});
+                          std::greater<float>{});
         std::partial_sort(std::begin(state.pitchAmounts) + 4,
                           std::begin(state.pitchAmounts) + 8,
                           std::begin(state.pitchAmounts) + 8,
-                          std::less{});
+                          std::less<float>{});
         std::partial_sort(std::begin(state.pitchAmounts) + 8,
                           std::begin(state.pitchAmounts) + 12,
                           std::begin(state.pitchAmounts) + 12,
-                          std::greater{});
+                          std::greater<float>{});
         std::partial_sort(std::begin(state.pitchAmounts) + 12,
                           std::begin(state.pitchAmounts) + 16,
                           std::begin(state.pitchAmounts) + 16,
-                          std::less{});
+                          std::less<float>{});
         std::partial_sort(std::begin(state.pitchAmounts) + 16,
                           std::begin(state.pitchAmounts) + 20,
                           std::begin(state.pitchAmounts) + 20,
-                          std::greater{});
+                          std::greater<float>{});
         std::partial_sort(std::begin(state.pitchAmounts) + 20,
                           std::begin(state.pitchAmounts) + 24,
                           std::begin(state.pitchAmounts) + 24,
-                          std::less{});
+                          std::less<float>{});
         std::partial_sort(std::begin(state.pitchAmounts) + 24,
                           std::begin(state.pitchAmounts) + 28,
                           std::begin(state.pitchAmounts) + 28,
-                          std::greater{});
+                          std::greater<float>{});
         std::partial_sort(std::begin(state.pitchAmounts) + 28,
                           std::end(state.pitchAmounts),
                           std::end(state.pitchAmounts),
-                          std::less{});
+                          std::less<float>{});
         break;
       }
 
@@ -590,7 +618,7 @@ struct SDSInstrument {
         float sorted[32];
         std::copy(
           std::begin(state.pitchAmountsBackup), std::end(state.pitchAmountsBackup), std::begin(sorted));
-        std::sort(std::begin(sorted), std::end(sorted), std::less{});
+        std::sort(std::begin(sorted), std::end(sorted), std::less<float>{});
 
         for (int i = 0; i < 32; i++) {
           if (i % 2 == 0) {
@@ -608,7 +636,7 @@ struct SDSInstrument {
         float sorted[32];
         std::copy(
           std::begin(state.pitchAmountsBackup), std::end(state.pitchAmountsBackup), std::begin(sorted));
-        std::sort(std::begin(sorted), std::end(sorted), std::greater{});
+        std::sort(std::begin(sorted), std::end(sorted), std::greater<float>{});
 
         for (int i = 0; i < 32; i++) {
           if (i % 2 == 0) {
@@ -630,11 +658,11 @@ struct SDSInstrument {
         std::partial_sort(std::begin(sorted),
                           std::begin(sorted) + 16,
                           std::begin(sorted) + 16,
-                          std::less{});
+                          std::less<float>{});
         std::partial_sort(std::begin(sorted) + 16,
                           std::end(sorted),
                           std::end(sorted),
-                          std::greater{});
+                          std::greater<float>{});
 
         for (int i = 0; i < 32; i++) {
           if (i % 2 == 0) {
@@ -656,11 +684,11 @@ struct SDSInstrument {
         std::partial_sort(std::begin(sorted),
                           std::begin(sorted) + 16,
                           std::begin(sorted) + 16,
-                          std::greater{});
+                          std::greater<float>{});
         std::partial_sort(std::begin(sorted) + 16,
                           std::end(sorted),
                           std::end(sorted),
-                          std::less{});
+                          std::less<float>{});
 
         for (int i = 0; i < 32; i++) {
           if (i % 2 == 0) {
@@ -786,7 +814,7 @@ struct SDSInstrument {
 
     if (isClockTick()) {
       clockTicks++;
-      printf("minSample: %.2f, maxSample: %.2f\n", minSample, maxSample);
+      //printf("minSample: %.2f, maxSample: %.2f\n", minSample, maxSample);
       minSample = 0;
       maxSample = 0;
 
@@ -866,6 +894,7 @@ struct SDSInstrument {
     }
 
     // noise
+    /*
     if (state.noise.value > 0.f) {
       noiseSteps++;
       if (noiseSteps >= (int) ((1.f - state.noise.getScaled()) * 1000.f)) {
@@ -874,6 +903,7 @@ struct SDSInstrument {
       } 
       sample += lastNoise;
     }
+      */
 
     // filter
     float filterCutoff = getFilterCutoff();
@@ -929,15 +959,16 @@ struct SDSInstrument {
   float externalClockFrequency;
   float sampleRate;
   bool playedPitchChanged;
-  float cachedRawPitch;
+  float cachedRawBasePitch;
+  float cachedRawPitchOffset;
   // TODO: also cache the filter, pitch and volume?
   float lastPlayedPitchAmount;
   float lastPlayedFilterAmount;
   int previousAlgorithm;
   bool previousClockState;
   int previousScale;
-  float lastNoise;
-  int noiseSteps;
+  //float lastNoise;
+  //int noiseSteps;
   ButtonInput& bootButton;
   SDSState state;
   SDSController controller;

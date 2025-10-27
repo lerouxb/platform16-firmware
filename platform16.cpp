@@ -152,7 +152,7 @@ int main() {
       // this is how long we busy-waited for the audio buffers to drain in the
       // last second because they were all full. ie. roughly how much of each
       // second we have "spare"
-      printf("%.2fms\n", total/1000.f);
+      //printf("%.2fms\n", total/1000.f);
       // TODO: should we somehow take into account the remainder?
       total = 0;
       tickStart = end; 

@@ -16,19 +16,12 @@ namespace platform {
 // only reliably handle up to about 200. Options are to lower this limit or to
 // just be mindful when connecting a pocket operator to clock out
 using BPMParameter = ExponentialParameter<0.f, 240.f, 1.5f>;
-//using BPMParameter = IntegerRangeParameter<30, 240>;
 using StepsParameter = IntegerRangeParameter<0, 31>;
-//using DestinationParameter = IntegerRangeParameter<0, 2>;
 using ScaleParameter = IntegerRangeParameter<0, 6>;
 
 using AlgorithmParameter = IntegerRangeParameter<0, 8>;
 
-//using FrequencyParameter = ExponentialParameter<27.5f, 1000.f, 2.0f>;
 using FrequencyParameter = ExponentialParameter<27.5f, 1000.f, 2.0f>;
-//using CutoffParameter = ExponentialParameter<5.f, HALF_SAMPLE_RATE, 3.f>;
-//using AttackDecayParameter = ExponentialParameter<-10.f, 10.f, 3.f>;
-//using AttackDecayParameter = FloatRangeParameter<-1.f, 1.f>;
-//using EvolveParameter = FloatRangeParameter<-1.f, 1.f>;
 
 using NoiseParameter = DeadzoneExponentialParameter<0.f, 1.f, 0.1f, 0.05f>;
 
@@ -36,9 +29,10 @@ using NoiseParameter = DeadzoneExponentialParameter<0.f, 1.f, 0.1f, 0.05f>;
 struct SDSState {
   BPMParameter bpm;
   RawParameter volume;
-  RawParameter pitch;
+  RawParameter basePitch;
   BipolarParameter<0.05f> cutoff;
-  NoiseParameter noise;
+  //NoiseParameter noise;
+  BipolarParameter<0.05f> pitchOffset;
 
   StepsParameter stepCount;
   BipolarParameter<0.05f> volumeEnvelope;
@@ -66,9 +60,9 @@ struct SDSState {
   SDSState()
     : bpm{120.f},
       volume{0},
-      pitch{0},
+      basePitch{0},
       cutoff{0},
-      noise{0},
+      pitchOffset{0},
 
       stepCount{0},
       volumeEnvelope{0},

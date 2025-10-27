@@ -12,12 +12,12 @@ struct SDSController {
   void update(SDSState& state) {
     state.bpm.setValue(pots.getInterpolatedValue(K7));
     state.volume.setValue(pots.getInterpolatedValue(K4));
-    state.pitch.setValue(pots.getInterpolatedValue(K12));
+    state.basePitch.setValue(pots.getInterpolatedValue(K12));
     state.cutoff.setValue(pots.getInterpolatedValue(K14));
 
     state.stepCount.setValue(pots.getInterpolatedValue(K3));
     state.volumeEnvelope.setValue(pots.getInterpolatedValue(K2));
-    state.noise.setValue(pots.getInterpolatedValue(K8));
+    state.pitchOffset.setValue(pots.getInterpolatedValue(K8));
     state.cutoffEnvelope.setValue(pots.getInterpolatedValue(K9));
 
     state.skips.setValue(pots.getInterpolatedValue(K6));
