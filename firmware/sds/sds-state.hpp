@@ -31,8 +31,8 @@ struct SDSState {
   RawParameter volume;
   RawParameter basePitch;
   BipolarParameter<0.05f> cutoff;
-  //NoiseParameter noise;
-  BipolarParameter<0.05f> pitchOffset;
+  NoiseParameter noise;
+  //BipolarParameter<0.05f> pitchOffset;
 
   StepsParameter stepCount;
   BipolarParameter<0.05f> volumeEnvelope;
@@ -62,7 +62,7 @@ struct SDSState {
       volume{0},
       basePitch{0},
       cutoff{0},
-      pitchOffset{0},
+      noise{0},
 
       stepCount{0},
       volumeEnvelope{0},

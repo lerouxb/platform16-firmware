@@ -183,8 +183,8 @@ struct SDSInstrument {
       previousAlgorithm{0},
       previousClockState{false},
       previousScale{0},
-      //lastNoise{0.f},
-      //noiseSteps{0},
+      lastNoise{0.f},
+      noiseSteps{0},
       minSample{0},
       maxSample{0}
       {};
@@ -400,12 +400,14 @@ struct SDSInstrument {
     int noteIndex = (int)note;
     float baseFrequency = getFrequencyForNote(scale, note);
 
+    /*
     float rawOffsetValue = playedPitchChanged || !scale || !cachedRawPitchOffset ? state.pitchOffset.getScaled() : cachedRawPitchOffset;
     cachedRawPitchOffset = rawOffsetValue;
     float pitchOffsetSemitones = _getSemitoneOffsetForNote(scale, rawOffsetValue, playedPitchChanged && scale);
     if (playedPitchChanged && scale) {
       printf("scale: %d, note: %f, baseFrequency: %f, rawOffsetValue: %f, pitchOffsetSemitones: %f\n", scale, note, baseFrequency, rawOffsetValue, pitchOffsetSemitones);
     }
+      */
 
     // scale up up to 1 octave
     // TODO: 2 might be nice?
@@ -415,7 +417,8 @@ struct SDSInstrument {
 
     float value;
     if (scale) {
-      int newNote = note + pitchOffsetSemitones + pitchAmountOffsetSemitones;
+      //int newNote = note + pitchOffsetSemitones + pitchAmountOffsetSemitones;
+      int newNote = note + pitchAmountOffsetSemitones;
 
       // clamp it just in case
       if (newNote < 0) {
@@ -427,8 +430,9 @@ struct SDSInstrument {
       value = notes[newNote];
 
     } else {
-      value = _addSemitonesToFrequency(baseFrequency, pitchOffsetSemitones);
-      value = _addSemitonesToFrequency(value, pitchAmountOffsetSemitones);
+      //value = _addSemitonesToFrequency(baseFrequency, pitchOffsetSemitones);
+      //      //value = _addSemitonesToFrequency(value, pitchAmountOffsetSemitones);
+      value = _addSemitonesToFrequency(baseFrequency, pitchAmountOffsetSemitones);
 
       // clamp it just in case
       value = fclamp(value, 0.f, 22050.f); 
@@ -900,6 +904,9 @@ struct SDSInstrument {
 
         volumeEnvelope.trigger();
         cutoffEnvelope.trigger();
+      } else {
+        // TODO: evolve non-played steps so they can come back to life.
+        // Otherwise if you evolve skips the sequence eventually empties.
       }
 
       state.step++;
@@ -924,7 +931,6 @@ struct SDSInstrument {
     }
 
     // noise
-    /*
     if (state.noise.value > 0.f) {
       noiseSteps++;
       if (noiseSteps >= (int) ((1.f - state.noise.getScaled()) * 1000.f)) {
@@ -933,7 +939,6 @@ struct SDSInstrument {
       } 
       sample += lastNoise;
     }
-      */
 
     // filter
     float filterCutoff = getFilterCutoff();
@@ -990,15 +995,15 @@ struct SDSInstrument {
   float sampleRate;
   bool playedPitchChanged;
   float cachedRawBasePitch;
-  float cachedRawPitchOffset;
+  //float cachedRawPitchOffset;
   // TODO: also cache the filter, pitch and volume?
   float lastPlayedPitchAmount;
   float lastPlayedFilterAmount;
   int previousAlgorithm;
   bool previousClockState;
   int previousScale;
-  //float lastNoise;
-  //int noiseSteps;
+  float lastNoise;
+  int noiseSteps;
   ButtonInput& bootButton;
   SDSState state;
   SDSController controller;

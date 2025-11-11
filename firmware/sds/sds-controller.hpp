@@ -10,25 +10,25 @@ struct SDSController {
   SDSController(Pots &pots) : pots{pots} {};
 
   void update(SDSState& state) {
-    state.bpm.setValue(pots.getInterpolatedValue(K7));
-    state.volume.setValue(pots.getInterpolatedValue(K4));
-    state.basePitch.setValue(pots.getInterpolatedValue(K12));
-    state.cutoff.setValue(pots.getInterpolatedValue(K14));
-
-    state.stepCount.setValue(pots.getInterpolatedValue(K3));
+    state.volume.setValue(pots.getInterpolatedValue(K1));
     state.volumeEnvelope.setValue(pots.getInterpolatedValue(K2));
-    state.pitchOffset.setValue(pots.getInterpolatedValue(K8));
-    state.cutoffEnvelope.setValue(pots.getInterpolatedValue(K9));
+    state.stepCount.setValue(pots.getInterpolatedValue(K3));
+    state.drive.setValue(pots.getInterpolatedValue(K4)); // X
 
-    state.skips.setValue(pots.getInterpolatedValue(K6));
-    state.drive.setValue(pots.getInterpolatedValue(K1));
-    state.pitchAmount.setValue(pots.getInterpolatedValue(K15));
-    state.cutoffAmount.setValue(pots.getInterpolatedValue(K16));
-
-    state.algorithm.setValue(pots.getInterpolatedValue(K13));
     state.evolve.setValue(pots.getInterpolatedValue(K5));
+    state.skips.setValue(pots.getInterpolatedValue(K6));
+    state.bpm.setValue(pots.getInterpolatedValue(K7));
+    state.algorithm.setValue(pots.getInterpolatedValue(K8));
+
+    state.cutoffEnvelope.setValue(pots.getInterpolatedValue(K9));
     state.scale.setValue(pots.getInterpolatedValue(K10));
     state.resonance.setValue(pots.getInterpolatedValue(K11));
+    state.basePitch.setValue(pots.getInterpolatedValue(K12));
+
+    state.noise.setValue(pots.getInterpolatedValue(K13)); // Y
+    state.cutoff.setValue(pots.getInterpolatedValue(K14));
+    state.pitchAmount.setValue(pots.getInterpolatedValue(K15));
+    state.cutoffAmount.setValue(pots.getInterpolatedValue(K16));
   }
 
   private:
