@@ -1,5 +1,5 @@
-#ifndef PLATFORM_STEP_STATE_H
-#define PLATFORM_STEP_STATE_H
+#ifndef PLATFORM_SDS_STATE_H
+#define PLATFORM_SDS_STATE_H
 
 #include "../../lib/parameters.hpp"
 #include <algorithm>
@@ -17,11 +17,11 @@ namespace platform {
 // just be mindful when connecting a pocket operator to clock out
 using BPMParameter = ExponentialParameter<0.f, 240.f, 1.5f>;
 using StepsParameter = IntegerRangeParameter<0, 31>;
-using ScaleParameter = IntegerRangeParameter<0, 6>;
+using ScaleParameter = IntegerRangeParameter<0, 7>;
 
 using AlgorithmParameter = IntegerRangeParameter<0, 8>;
 
-using FrequencyParameter = ExponentialParameter<27.5f, 1000.f, 2.0f>;
+//using FrequencyParameter = ExponentialParameter<27.5f, 1000.f, 2.0f>;
 
 using NoiseParameter = DeadzoneExponentialParameter<0.f, 1.f, 0.1f, 0.05f>;
 
@@ -91,4 +91,4 @@ struct SDSState {
 
 }  // namespace platform
 
-#endif  // PLATFORM_STEP_STATE_H
+#endif  // PLATFORM_SDS_STATE_H

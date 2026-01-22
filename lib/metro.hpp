@@ -25,6 +25,7 @@ class Metro {
     phs = 0.0f;
     sampleRate = sampleRateIn;
     phsInc = (TWOPI_F * freq) / sampleRateIn;
+    isClockTick = false;
   }
 
   /** checks current state of Metro object and updates state if necesary.
@@ -33,9 +34,15 @@ class Metro {
     phs += phsInc;
     if (phs >= TWOPI_F) {
       phs -= TWOPI_F;
+      isClockTick = true;
       return 1;
     }
+    isClockTick = false;
     return 0;
+  }
+
+  bool isTick() {
+    return isClockTick;
   }
 
   /** resets phase to 0
@@ -65,6 +72,7 @@ class Metro {
   private:
   float freq;
   float phs, sampleRate, phsInc;
+  bool isClockTick;
 };
 
 }  // namespace platform

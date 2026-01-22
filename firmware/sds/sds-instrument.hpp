@@ -1,14 +1,15 @@
-#ifndef PLATFORM_STEP_INSTRUMENT_H
-#define PLATFORM_STEP_INSTRUMENT_H
+#ifndef PLATFORM_SDS_INSTRUMENT_H
+#define PLATFORM_SDS_INSTRUMENT_H
 
 #include "../../lib/buttons.hpp"
-#include "../../lib/attackdecay.hpp"
+#include "../../lib/attackordecay.hpp"
 #include "../../lib/gpio.hpp"
 #include "../../lib/ladder.hpp"
 #include "../../lib/metro.hpp"
 #include "../../lib/oscillator.hpp"
 #include "../../lib/pots.hpp"
 #include "../../lib/utils.hpp"
+#include "../../lib/quantize.hpp"
 #include "sds-controller.hpp"
 #include "sds-state.hpp"
 
@@ -17,15 +18,6 @@
 #include <math.h>
 #include <random>
 
-#define SCALE_UNQUANTIZED 0
-#define SCALE_CHROMATIC 1
-#define SCALE_MAJOR 2
-// maybe only keep natural OR harmonic OR melodic
-#define SCALE_NATURAL_MINOR 3
-#define SCALE_HARMONIC_MINOR 4
-#define SCALE_PENTATONIC_MAJOR 5
-#define SCALE_PENTATONIC_MINOR 6
-// maybe the blues scale?
 
 // This is kinda a balance - I don't want too many algorithms because the
 // labelling becomes very busy. I figure ramps are the first to go because you
@@ -58,114 +50,6 @@ float maybeAttackDecay(float env, float value) {
   }
   return value;
 }
-
-/*
-scales
-0 unquantized
-1 chromatic
-2 major
-3 natural minor
-4 harmonic minor
-5 pentatonic major
-6 pentatonic minor
-*/
-int chromaticOffsets[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
-int majorOffsets[] = {0, 2, 4, 5, 7, 9, 11, 12};
-int naturalMinorOffsets[] = {0, 2, 3, 5, 7, 8, 10, 12};
-int harmonicMinorOffsets[] = {0, 2, 3, 5, 7, 8, 11, 12};
-int pentatonicMajorOffsets[] = {0, 2, 4, 7, 9, 12};
-int pentatonicMinorOffsets[] = {0, 3, 5, 7, 10, 12};
-
-// 76+12 = 88
-float notes[] = {
-  /*A0*/ 27.5,
-  /*A♯0/B♭0*/ 29.13524,
-  /*B0*/ 30.86771,
-  /*C1*/ 32.7032,
-  /*C♯1/D♭1*/ 34.64783,
-  /*D1*/ 36.7081,
-  /*D♯1/E♭1*/ 38.89087,
-  /*E1*/ 41.20344,
-  /*F1*/ 43.65353,
-  /*F♯1/G♭1*/ 46.2493,
-  /*G1*/ 48.99943,
-  /*G♯1/A♭1*/ 51.91309,
-  /*A1*/ 55.f,
-  /*A♯1/B♭1*/ 58.27047,
-  /*B1*/ 61.73541,
-  /*C2*/ 65.40639,
-  /*C♯2/D♭2*/ 69.29566,
-  /*D2*/ 73.41619,
-  /*D♯2/E♭2*/ 77.78175,
-  /*E2*/ 82.40689,
-  /*F2*/ 87.30706,
-  /*F♯2/G♭2*/ 92.49861,
-  /*G2*/ 97.99886,
-  /*G♯2/A♭2*/ 103.8262,
-  /*A2*/ 110.f,
-  /*A♯2/B♭2*/ 116.5409,
-  /*B2*/ 123.4708,
-  /*C3*/ 130.8128,
-  /*C♯3/D♭3*/ 138.5913,
-  /*D3*/ 146.8324,
-  /*D♯3/E♭3*/ 155.5635,
-  /*E3*/ 164.8138,
-  /*F3*/ 174.6141,
-  /*F♯3/G♭3*/ 184.9972,
-  /*G3*/ 195.9977,
-  /*G♯3/A♭3*/ 207.6523,
-  /*A3*/ 220.f,
-  /*A♯3/B♭3*/ 233.0819,
-  /*B3*/ 246.9417,
-  /*C4*/ 261.6256,
-  /*C♯4/D♭4*/ 277.1826,
-  /*D4*/ 293.6648,
-  /*D♯4/E♭4*/ 311.127,
-  /*E4*/ 329.6276,
-  /*F4*/ 349.2282,
-  /*F♯4/G♭4*/ 369.9944,
-  /*G4*/ 391.9954,
-  /*G♯4/A♭4*/ 415.3047,
-  /*A4*/ 440.f,
-  /*A♯4/B♭4*/ 466.1638,
-  /*B4*/ 493.8833,
-  /*C5*/ 523.2511,
-  /*C♯5/D♭5*/ 554.3653,
-  /*D5*/ 587.3295,
-  /*D♯5/E♭5*/ 622.254,
-  /*E5*/ 659.2551,
-  /*F5*/ 698.4565,
-  /*F♯5/G♭5*/ 739.9888,
-  /*G5*/ 783.9909,
-  /*G♯5/A♭5*/ 830.6094,
-  /*A5*/ 880.f,
-  /*A♯5/B♭5*/ 932.3275,
-  /*B5*/ 987.7666,
-  /*C6*/ 1046.502,
-  /*C♯6/D♭6*/ 1108.731,
-  /*D6*/ 1174.659,
-  /*D♯6/E♭6*/ 1244.508,
-  /*E6*/ 1318.51,
-  /*F6*/ 1396.913,
-  /*F♯6/G♭6*/ 1479.978,
-  /*G6*/ 1567.982,
-  /*G♯6/A♭6*/ 1661.219,
-  /*A6*/ 1760.f,
-  /*A♯6/B♭6*/ 1864.655,
-  /*B6*/ 1975.533,
-  /*C7*/ 2093.005,
-  /*C♯7/D♭7*/ 2217.461,
-  /*D7*/ 2349.318,
-  /*D♯7/E♭7*/ 2489.016,
-  /*E7*/ 2637.02,
-  /*F7*/ 2793.826,
-  /*F♯7/G♭7*/ 2959.955,
-  /*G7*/ 3135.963,
-  /*G♯7/A♭7*/ 3322.438,
-  /*A7*/ 3520.f,
-  /*A♯7/B♭7*/ 3729.31,
-  /*B7*/ 3951.066,
-  /*C8*/ 4186.009};
 
 struct SDSInstrument {
   SDSInstrument(Pots& pots, ButtonInput& bootButton)
@@ -287,117 +171,11 @@ struct SDSInstrument {
     return note;
   }
 
-  float getFrequencyForNote(int scale, float note) {
-    int noteIndex = (int)note;
-    float noteFraction = note - noteIndex;
-    float value = notes[noteIndex];
-
-    if (!scale) {
-      value = value + (notes[noteIndex + 1] - notes[noteIndex]) * noteFraction;
-    }
-
-    return value;
-  }
-
-  float _getSemitoneOffsetForNote(int scale, float amount, bool enableLogging) {
-    if (scale) {
-      int* scaleNotes;
-      int numScaleNotes;
-
-      switch (scale) {
-        case SCALE_MAJOR:
-          if (enableLogging && scale != previousScale) {
-            printf("scale changed to major\n");
-          }
-          scaleNotes = majorOffsets;
-          numScaleNotes = sizeof(majorOffsets) / sizeof(int);
-          break;
-        case SCALE_NATURAL_MINOR:
-          if (enableLogging && scale != previousScale) {
-            printf("scale changed to natural minor\n");
-          }
-          scaleNotes = naturalMinorOffsets;
-          numScaleNotes = sizeof(naturalMinorOffsets) / sizeof(int);
-          break;
-        case SCALE_HARMONIC_MINOR:
-          if (enableLogging && scale != previousScale) {
-            printf("scale changed to harmonic minor\n");
-          }
-          scaleNotes = harmonicMinorOffsets;
-          numScaleNotes = sizeof(harmonicMinorOffsets) / sizeof(int);
-          break;
-        case SCALE_PENTATONIC_MAJOR:
-          if (enableLogging && scale != previousScale) {
-            printf("scale changed to pentatonic major\n");
-          }
-          scaleNotes = pentatonicMajorOffsets;
-          numScaleNotes = sizeof(pentatonicMajorOffsets) / sizeof(int);
-          break;
-        case SCALE_PENTATONIC_MINOR:
-          if (enableLogging && scale != previousScale) {
-            printf("scale changed to pentatonic minor\n");
-          }
-          scaleNotes = pentatonicMinorOffsets;
-          numScaleNotes = sizeof(pentatonicMinorOffsets) / sizeof(int);
-          break;
-
-        default:
-          if (enableLogging && scale != previousScale) {
-            printf("scale changed to chromatic\n");
-          }
-
-          scaleNotes = chromaticOffsets;
-          numScaleNotes = sizeof(chromaticOffsets) / sizeof(int);
-          break;
-      }
-
-
-      // TODO: we should round so you can get a full octave up or down
-      int offset = (int)(fabs(amount) * numScaleNotes);
-
-      if (enableLogging) {
-        printf("offset: %d\n", offset);
-      }
-
-      if (amount < 0.f) {
-        return -scaleNotes[offset];
-      }
-      return scaleNotes[offset];
-      /*
-      int newNoteIndex = (amount < 0.f) ? noteIndex - scaleNotes[offset] : noteIndex + scaleNotes[offset];
-
-      // clamp it just in case
-      if (newNoteIndex < 0) {
-        newNoteIndex = 0;
-      }
-      if (newNoteIndex > 87) {
-        newNoteIndex = 87;
-      }
-      */
-
-
-      //return notes[newNoteIndex] - notes[noteIndex];
-    } else {
-
-      if (enableLogging && scale != previousScale) {
-        printf("scale changed to unquantized\n");
-      }
-      //float factor = amount > 0.f ? amount : 0.5f + (amount * 0.5f);
-      //return frequency * factor;
-      return amount * 12.f;
-    }
-  }
-
-  float _addSemitonesToFrequency(float frequency, float semitones) {
-    return frequency * powf(2.f, semitones/12.f);
-  }
-
   float getOscillatorFrequency() {
     // TODO: the curve still needs work.
 
     int scale = state.scale.getScaled();
     float note = _getNote(scale);
-    int noteIndex = (int)note;
     float baseFrequency = getFrequencyForNote(scale, note);
 
     /*
@@ -413,7 +191,7 @@ struct SDSInstrument {
     // TODO: 2 might be nice?
     float rawAmount = state.pitchAmount.value * lastPlayedPitchAmount;
     // TODO: This actually has to respond to the new transposed pitch, not the root note
-    float pitchAmountOffsetSemitones = _getSemitoneOffsetForNote(scale, rawAmount, playedPitchChanged && scale);
+    float pitchAmountOffsetSemitones = getSemitoneOffsetForNote(scale, rawAmount);
 
     float value;
     if (scale) {
@@ -430,9 +208,9 @@ struct SDSInstrument {
       value = notes[newNote];
 
     } else {
-      //value = _addSemitonesToFrequency(baseFrequency, pitchOffsetSemitones);
-      //      //value = _addSemitonesToFrequency(value, pitchAmountOffsetSemitones);
-      value = _addSemitonesToFrequency(baseFrequency, pitchAmountOffsetSemitones);
+      //value = addSemitonesToFrequency(baseFrequency, pitchOffsetSemitones);
+      //      //value = addSemitonesToFrequency(value, pitchAmountOffsetSemitones);
+      value = addSemitonesToFrequency(baseFrequency, pitchAmountOffsetSemitones);
 
       // clamp it just in case
       value = fclamp(value, 0.f, 22050.f); 
@@ -1008,8 +786,8 @@ struct SDSInstrument {
   SDSState state;
   SDSController controller;
   Metro clock;
-  AttackDecayEnvelope volumeEnvelope;
-  AttackDecayEnvelope cutoffEnvelope;
+  AttackOrDecayEnvelope volumeEnvelope;
+  AttackOrDecayEnvelope cutoffEnvelope;
   Oscillator oscillator;
   LadderFilter filter;
 
@@ -1019,4 +797,4 @@ struct SDSInstrument {
 
 }  // namespace platform
 
-#endif  // PLATFORM_STEP_INSTRUMENT_H
+#endif  // PLATFORM_SDS_INSTRUMENT_H

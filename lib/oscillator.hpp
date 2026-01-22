@@ -181,6 +181,9 @@ class Oscillator {
     return out * amp;
   }
 
+  float getPhase() {
+    return phase;
+  }
 
   /** Adds a value 0.0-1.0 (equivalent to 0.0-TWO_PI) to the current phase. Useful for PM and "FM"
    * synthesis.

@@ -81,6 +81,10 @@ inline float fastmod1f(float x)
     return x - static_cast<int>(x);
 }
 
+inline float monopolar(float value) {
+  return (value + 1.f) * 0.5f;
+}
+
 } // namespace platform
 
 #endif

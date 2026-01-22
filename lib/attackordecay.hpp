@@ -1,5 +1,5 @@
-#ifndef PLATFORM_ATTACKDECAY_H
-#define PLATFORM_ATTACKDECAY_H
+#ifndef PLATFORM_ATTACKORDECAY_H
+#define PLATFORM_ATTACKODECAY_H
 
 #include <math.h>
 
@@ -15,10 +15,10 @@ float safeAttackDecayTime(float time) {
   return time == 0 ? 0.000041666666666666665 : time;
 }
 
-class AttackDecayEnvelope {
+class AttackOrDecayEnvelope {
   public:
-  AttackDecayEnvelope() = default;
-  ~AttackDecayEnvelope() = default;
+  AttackOrDecayEnvelope() = default;
+  ~AttackOrDecayEnvelope() = default;
 
   void init(float sampleRateIn) {
     sampleRate = sampleRateIn;
@@ -30,13 +30,6 @@ class AttackDecayEnvelope {
     value = 1.0f;
   }
 
-  /*
-  When mapping 0-1 to attack or decay, assuming the envelope is for volume:
-  0 is very slow attack (so it starts quiet and very slowly gets louder)
-  1 is very fast decay (so it starts loud and almost immediately gets quiet)
-  0.51 is a slow decay (so loud immediately and then almost indefinitely)
-  0.49 is a very fast attack (so almost immediately loud)
-  */
   void setTimeAndDirection(float valueIn) {
     // https://www.musicdsp.org/en/latest/Synthesis/189-fast-exponential-envelope-generator.html
 
@@ -71,4 +64,4 @@ class AttackDecayEnvelope {
 
 } // namespace platform
 
-#endif // PLATFORM_ATTACKDECAY_H
+#endif // PLATFORM_ATTACKORDECAY_H

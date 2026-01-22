@@ -27,6 +27,7 @@
 #include "lib/pots.hpp"
 #include "lib/buttons.hpp"
 #include "firmware/sds/sds-instrument.hpp"
+//#include "firmware/pmd/pmd-instrument.hpp"
 
 using namespace platform;
 
@@ -110,6 +111,7 @@ int main() {
   pots.init();
   platform::ButtonInput bootButton;
   platform::SDSInstrument instrument(pots, bootButton);
+  //platform::PMDInstrument instrument(pots, bootButton);
   instrument.init(SAMPLE_RATE);
 
   struct audio_buffer_pool* ap = init_audio();

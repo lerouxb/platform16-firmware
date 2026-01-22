@@ -1,5 +1,5 @@
-#ifndef PLATFORM_STEP_CONTROLLER_H
-#define PLATFORM_STEP_CONTROLLER_H
+#ifndef PLATFORM_SDS_CONTROLLER_H
+#define PLATFORM_SDS_CONTROLLER_H
 
 #include "sds-state.hpp"
 #include "../../lib/pots.hpp"
@@ -37,4 +37,4 @@ struct SDSController {
 
 } // namespace platform
 
-#endif  // PLATFORM_STEP_CONTROLLER_H
+#endif  // PLATFORM_SDS_CONTROLLER_H
