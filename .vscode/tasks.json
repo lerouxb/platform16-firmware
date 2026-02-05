@@ -9,6 +9,7 @@
             "args": ["-C", "${workspaceFolder}/build"],
             "group": "build",
             "presentation": {
+                "clear": true,
                 "reveal": "always",
                 "panel": "dedicated"
             },

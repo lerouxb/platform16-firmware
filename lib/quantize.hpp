@@ -286,6 +286,69 @@ int* getChordOffsetsForType(int chordType) {
   }
 }
 
+struct NoteQuantizer {
+  NoteQuantizer() : scale(0), lastPitchValue(0.f), lastPitchAmount(0.f) {}
+  ~NoteQuantizer() {}
+
+  /*
+  This is useful so you can change the scale, base pitch and amount only when
+  notes get triggered when trying to stick to a scale which should guarantee no
+  oscillation between two notes.
+  */
+  void setScaleAndPitchAmount(int scaleIn, float pitchValueIn, float pitchAmountIn) {
+    scale = scaleIn;
+    lastPitchValue = pitchValueIn;
+    lastPitchAmount = pitchAmountIn;
+  }
+
+  /*
+  If there's a scale, we'll use lastPitchValue and lastPitchAmount to determine
+  the quantized pitch. If not, we'll use the immediate values. This way when not
+  quantized you can vary the pitch continuously, but when quantized it only
+  changes when notes are triggered.
+  */
+  float getOscillatorFrequency(float immediatePitchValue, float immediatePitchAmount) {
+    // when quantizing to a scale, only change the pitch when new notes get triggered
+    float rawValue = scale ? lastPitchValue : immediatePitchValue;
+    float note = 76.f * rawValue;
+
+    float baseFrequency = getFrequencyForNote(scale, note);
+
+    // scale up up to 1 octave
+    // TODO: 2 might be nice?
+    float rawAmount = scale ? lastPitchAmount : immediatePitchAmount;
+
+    float pitchAmountOffsetSemitones = getSemitoneOffsetForNote(scale, rawAmount);
+
+    float value;
+    if (scale) {
+      int newNote = note + pitchAmountOffsetSemitones;
+
+      // clamp it just in case
+      if (newNote < 0) {
+        newNote = 0;
+      } else if (newNote > 87) {
+        newNote = 87;
+      }
+
+      value = notes[newNote];
+
+    } else {
+      value = addSemitonesToFrequency(baseFrequency, pitchAmountOffsetSemitones);
+
+      // clamp it just in case
+      value = fclamp(value, 0.f, 22050.f);
+    }
+
+    return value;
+  }
+
+  private:
+  int scale;
+  float lastPitchValue;
+  float lastPitchAmount;
+};
+
 }  // namespace platform
 
 
