@@ -17,9 +17,9 @@ struct TEPState {
   RawParameter glide;
   RawParameter resonance;
 
-  RawParameter distortion;
-  RawParameter distortionAccent;
-  RhythmParameter distortionRhythm;
+  RawParameter volume;
+  RawParameter volumeAccent;
+  RhythmParameter volumeRhythm;
   
   RawParameter cutoff;
   RawParameter cutoffAccent;
@@ -31,15 +31,15 @@ struct TEPState {
 
   ExponentialParameter<0.f, 10.f, 2.f> detune;
   RawParameter rotate;
-  RawParameter volume;
+  RawParameter distortion;
 
   TEPState(): bpm{},
               octave{},
               glide{},
               resonance{},
-              distortion{},
-              distortionAccent{},
-              distortionRhythm{},
+              volume{},
+              volumeAccent{},
+              volumeRhythm{},
               cutoff{},
               cutoffAccent{},
               cutoffRhythm{},
@@ -48,7 +48,7 @@ struct TEPState {
               degreeRhythm{},
               detune{},
               rotate{},
-              volume{}   {
+              distortion{}   {
   }
 };
 

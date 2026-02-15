@@ -68,10 +68,12 @@ struct TEPInstrument {
       maxSample{0.f},
       previousOscillatorFrequency{0.f},
       previousCutoff{0.f},
-      previousDistortion{0.f},
+      previousVolume{0.f},
       nextOscillatorFrequency{0.f},
       nextCutoff{0.f},
-      nextDistortion{0.f} {};
+      nextVolume{0.f},
+      lastChordIndex{0},
+      lastArpeggioMode{0} {};
 
   void init(float sampleRateIn) {
     printf("init\n");
@@ -95,15 +97,6 @@ struct TEPInstrument {
     controller.update(state);
   }
 
-  float getVolume() {
-    float value = state.volume.getScaled();
-    value *= 3.f;
-
-    value = powf(value, 2.f);
-
-    return value;
-  }
-
   float getOscillatorFrequency() {
     // rootIndex is the root note of the scale
     int rootIndex = 3;  // C1
@@ -113,14 +106,36 @@ struct TEPInstrument {
     // chordIndex is the root note of the chord
     int chordIndex = rootIndex + degreeOffset;
 
+    ArpeggioMode arpeggioMode = static_cast<ArpeggioMode>(state.arpeggioMode.getScaled());
+
+    // caching so we don't keep recalculating and setting vectors and doing a
+    // bunch of maths unnecessarily when the note and arpeggio mode haven't
+    // changed.
+    if (chordIndex == lastChordIndex && arpeggioMode == lastArpeggioMode) {
+      return arpeggio.getLastValue();
+    }
+
+    printf("caching chordIndex: %d, arpeggioMode: %d\n", chordIndex, (int)arpeggioMode);
+    lastChordIndex = chordIndex;
+    lastArpeggioMode = arpeggioMode;
+
+    arpeggio.setMode(arpeggioMode);
+
     // chordType is major, minor, diminished or augmented
     int chordType = getChordTypeForNote(SCALE_NATURAL_MINOR, degreeOffset);
     int* offsets = getChordOffsetsForType(chordType);
+    std::vector<int> offsetsVec{offsets, offsets + 3};
+
+    // add the 7th
+    //offsetsVec.push_back(naturalMinorOffsets[6]);
+    // add the 6th
+    offsetsVec.push_back(naturalMinorOffsets[5]);
+    std::sort(offsetsVec.begin(), offsetsVec.end());
 
     std::vector<float> arpeggioValues;
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 4; i++) {
       // noteIndex is the actual note in the chord
-      int noteIndex = chordIndex + offsets[i];
+      int noteIndex = chordIndex + offsetsVec[i];
       if (noteIndex < 0) {
         noteIndex = 0;
       } else if (noteIndex > 87) {
@@ -131,24 +146,22 @@ struct TEPInstrument {
     }
 
     arpeggio.setValues(arpeggioValues);
-    arpeggio.setMode(static_cast<ArpeggioMode>(state.arpeggioMode.getScaled()));
 
-    // if the next step in the rhythm is on, then advance the arpeggio.
-    // otherwise play the same note as last time. This gives the user the option
-    // to play 'stochastic' or to just sustain drones longer before changing the
-    // note.
-    return degreeRhythm.process() ? arpeggio.process() : arpeggio.getLastValue();
+    // return degreeRhythm.getLastValue() ? arpeggio.process() : arpeggio.getLastValue();
+    return arpeggio.getLastValue();
   }
 
   float getCutoff() {
     float cutoffValue = state.cutoff.getScaled();
-    if (cutoffRhythm.process()) {
+    if (cutoffRhythm.getLastValue()) {
       cutoffValue += state.cutoffAccent.getScaled();
     }
 
     if (cutoffValue > 1.f) {
       cutoffValue = 1.f;
     }
+
+    // TODO: cache by cutoffValue (probably quantized)
 
     float value = powf(cutoffValue, 3.f) * (HALF_SAMPLE_RATE - 5.f) + 5.f;
 
@@ -163,14 +176,29 @@ struct TEPInstrument {
     return state.resonance.getScaled() * 1.8f;
   }
 
-  float getDistortion() {
-    float value = state.distortion.getScaled();
-    if (distortionRhythm.process()) {
-      value += state.distortionAccent.getScaled();
+  float getVolume() {
+    float value = state.volume.getScaled();
+    float volumeAccent = state.volumeAccent.getScaled();
+    bool isAccent = volumeRhythm.getLastValue();
+    
+    // TODO: cache by value, volumeAccent and isAccent
+
+    value *= 3.f;
+
+    if (isAccent) {
+      // TODO: this needs work. accent should somehow multiply it so that volume
+      // 0 means no sound even with accent, but accent should always make a big
+      // difference even if volume is low
+      value *= (1.f + volumeAccent * 2.f);
     }
+    
+    /*
     if (value > 1.f) {
       value = 1.f;
     }
+    */
+
+    value = powf(value, 2.f);
 
     return value;
   }
@@ -189,37 +217,51 @@ struct TEPInstrument {
     if (tick) {
       previousOscillatorFrequency = nextOscillatorFrequency;
       previousCutoff = nextCutoff;
-      previousDistortion = nextDistortion;
+      previousVolume = nextVolume;
 
-      nextOscillatorFrequency = getOscillatorFrequency();
-      nextCutoff = getCutoff();
-      nextDistortion = getDistortion();
+      if (degreeRhythm.process()) {
+        // if the next step in the rhythm is on, then advance the arpeggio.
+        // otherwise play the same note as last time. This gives the user the option
+        // to play 'stochastic' or to just sustain drones longer before changing the
+        // note.
+
+        arpeggio.process();
+      }
+      volumeRhythm.process();
+      cutoffRhythm.process();
 
       // printf("minSample: %.2f, maxSample: %.2f\n", minSample, maxSample);
       minSample = 0;
       maxSample = 0;
 
-      std::vector<bool>* distortionr = &euclideanRhythms[state.distortionRhythm.getScaled()];
-      distortionRhythm.setRhythm(distortionr);
+      std::vector<bool>* volumer = &euclideanRhythms[state.volumeRhythm.getScaled()];
+      volumeRhythm.setRhythm(volumer);
       std::vector<bool>* cutoffr = &euclideanRhythms[state.cutoffRhythm.getScaled()];
       cutoffRhythm.setRhythm(cutoffr);
       std::vector<bool>* degreer = &euclideanRhythms[state.degreeRhythm.getScaled()];
       degreeRhythm.setRhythm(degreer);
 
-      printRhythm(distortionr);
+      /*
+      printRhythm(volumer);
       printRhythm(cutoffr);
       printRhythm(degreer);
 
-      printf("arp: %d, distortion: %d, cutoff: %d, degree: %d\n",
+      printf("arp: %d, volume: %d, cutoff: %d, degree: %d\n",
              state.arpeggioMode.getScaled(),
-             state.distortionRhythm.getScaled(),
+             state.volumeRhythm.getScaled(),
              state.cutoffRhythm.getScaled(),
              state.degreeRhythm.getScaled());
+      */
     }
 
     if (!inOutClock.getClockTicks()) {
       return 0.f;
     }
+
+    // update all these on every tick for now
+    nextOscillatorFrequency = getOscillatorFrequency();
+    nextCutoff = getCutoff();
+    nextVolume = getVolume();
 
     float glideAmount = state.glide.getScaled();
     float clockPhase = clock.getPhase() / TWOPI_F;
@@ -246,13 +288,13 @@ struct TEPInstrument {
     // why 0.35? because I just measured the likely min/max value. Just applying
     // this so that overdrive doesn't increase the volume too much.
     // TODO: re-measure if it is really still 0.35 with this new firmware
-    float distortion = lerpByPhase(previousDistortion, nextDistortion, glideAmount, clockPhase);
-    sample = processOverdrive(sample, distortion, 0.35f);
+    sample = processOverdrive(sample, state.distortion.getScaled(), 0.35f);
 
     minSample = std::min(minSample, sample);
     maxSample = std::max(maxSample, sample);
 
-    sample *= getVolume();
+    float volume = lerpByPhase(previousVolume, nextVolume, glideAmount, clockPhase);
+    sample *= volume;
     return softClip(sample);
   }
 
@@ -273,7 +315,7 @@ struct TEPInstrument {
   Oscillator oscillator2;
   LadderFilter filter;
 
-  Rhythm distortionRhythm;
+  Rhythm volumeRhythm;
   Rhythm cutoffRhythm;
   Rhythm degreeRhythm;
 
@@ -284,11 +326,14 @@ struct TEPInstrument {
 
   float previousOscillatorFrequency;
   float previousCutoff;
-  float previousDistortion;
+  float previousVolume;
 
   float nextOscillatorFrequency;
   float nextCutoff;
-  float nextDistortion;
+  float nextVolume;
+
+  int lastChordIndex;
+  ArpeggioMode lastArpeggioMode;
 };
 
 }  // namespace platform

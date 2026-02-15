@@ -10,14 +10,14 @@ struct TEPController {
   TEPController(Pots& pots) : pots{pots} {};
 
   void update(TEPState& state) {
-    state.distortionRhythm.setValue(pots.getInterpolatedValue(K1));
+    state.volumeRhythm.setValue(pots.getInterpolatedValue(K1));
     state.glide.setValue(pots.getInterpolatedValue(K2));
     
-    state.distortion.setValue(pots.getInterpolatedValue(K3));
+    state.volume.setValue(pots.getInterpolatedValue(K3));
     state.bpm.setValue(pots.getInterpolatedValue(K4));
-    state.volume.setValue(pots.getInterpolatedValue(K5));
+    state.distortion.setValue(pots.getInterpolatedValue(K5));
 
-    state.distortionAccent.setValue(pots.getInterpolatedValue(K6));
+    state.volumeAccent.setValue(pots.getInterpolatedValue(K6));
     state.detune.setValue(pots.getInterpolatedValue(K7));
 
     state.resonance.setValue(pots.getInterpolatedValue(K8));
