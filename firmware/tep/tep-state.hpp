@@ -9,7 +9,7 @@ namespace platform {
 
 using BPMParameter = ExponentialParameter<0.f, 240.f, 1.5f>;
 //using RhythmParameter = IntegerRangeParameter<0, 80>; 
-using RhythmParameter = IntegerRangeParameter<0, 22>; 
+using RhythmParameter = IntegerRangeParameter<0, 28>;
 
 struct TEPState {
   BPMParameter bpm;

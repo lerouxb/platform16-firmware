@@ -91,6 +91,18 @@ struct TEPInstrument {
     clock.init(1.f, sampleRate);
 
     filter.setFilterMode(LadderFilter::FilterMode::LP24);
+
+    // sort the rhythms so that the total number of true values for each divided
+    // by the total number of values for each is increasing in order. So { 0 }
+    // is at the start and { 1 } is at the end. (yes we count everything every
+    // time, but this sort only runs once on startup)
+    std::sort(euclideanRhythms.begin(),
+              euclideanRhythms.end(),
+              [](const std::vector<bool>& a, const std::vector<bool>& b) {
+                float aRatio = std::count(a.begin(), a.end(), true) / (float)a.size();
+                float bRatio = std::count(b.begin(), b.end(), true) / (float)b.size();
+                return aRatio < bRatio;
+              });
   }
 
   void update() {
@@ -127,7 +139,7 @@ struct TEPInstrument {
     std::vector<int> offsetsVec{offsets, offsets + 3};
 
     // add the 7th
-    //offsetsVec.push_back(naturalMinorOffsets[6]);
+    // offsetsVec.push_back(naturalMinorOffsets[6]);
     // add the 6th
     offsetsVec.push_back(naturalMinorOffsets[5]);
     std::sort(offsetsVec.begin(), offsetsVec.end());
@@ -180,7 +192,7 @@ struct TEPInstrument {
     float value = state.volume.getScaled();
     float volumeAccent = state.volumeAccent.getScaled();
     bool isAccent = volumeRhythm.getLastValue();
-    
+
     // TODO: cache by value, volumeAccent and isAccent
 
     value *= 3.f;
@@ -191,7 +203,7 @@ struct TEPInstrument {
       // difference even if volume is low
       value *= (1.f + volumeAccent * 2.f);
     }
-    
+
     /*
     if (value > 1.f) {
       value = 1.f;
